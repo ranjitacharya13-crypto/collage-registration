@@ -17,7 +17,7 @@ app.innerHTML = `
     <a id="creative-register" class="creative-register" href="#registration-hub" aria-label="Open registration hub"><span>REGISTER NOW <b>↗</b></span><i class="wave wave-one"></i><i class="wave wave-two"></i><i class="wave wave-three"></i></a>
     <section id="intro" class="intro"><p class="eyebrow">A cinematic event gallery</p><h1>AURA<br><em>2026</em></h1><p>Sankara Polytechnic College</p><div class="swipe">Swipe to explore <b>↓</b></div></section>
     <aside class="progress"><span id="progress"></span></aside>
-    <footer><span id="chapter">READY FOR TAKEOFF</span><span>11—12 AUG / 2026</span></footer>
+    <footer><span id="chapter">READY FOR TAKEOFF</span><span>30—31 JUL / 2026</span></footer>
   </main>
   <section id="registration-hub" class="choice" aria-hidden="true"><p class="eyebrow">Select your frequency</p><h2>Registration<br>Hub</h2><div class="route-grid">
     <a href="#technical" class="route cyan"><small>01 / CYBER CIRCUITRY</small><strong>TECHNICAL</strong><span>Bug Hunter · Debate</span></a>
@@ -62,10 +62,10 @@ const rings = [ring(.17, 0x00e5ff), ring(.34, 0xff2e9f), ring(.56, 0x00e5ff), ri
 
 const milestones = [
   [.05, 'AURA 2026', 'SANKARA POLYTECHNIC COLLEGE', 0x00e5ff, 1.25], [.15, 'SPEECH ENDS', '10:50 AM', 0x92a1bd, .55],
-  [.12, 'DAY 1', '11.08.2026', 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
+  [.12, 'DAY 1', '30.07.2026', 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
   [.41, 'TREASURE HUNT', '11:30 AM — 12:30 PM', 0xff2e9f, .85], [.49, 'LUNCH BREAK', '1:20 PM — 1:50 PM', 0x92a1bd, .55],
   [.56, 'BUG HUNT', '2:30 PM — 3:15 PM', 0x00e5ff, .85], [.62, 'SINGING & DANCE', '2:15 PM — 4:00 PM', 0xffd66b, .6],
-  [.70, 'DAY 2', '12.08.2026', 0x00e5ff, 1.5], [.78, 'MURDER MYSTERY', '11:30 AM — 12:45 PM', 0xff2e9f, .85],
+  [.70, 'DAY 2', '31.07.2026', 0x00e5ff, 1.5], [.78, 'MURDER MYSTERY', '11:30 AM — 12:45 PM', 0xff2e9f, .85],
   [.85, 'DEBATE', '2:30 PM — 3:30 PM', 0x00e5ff, .9], [.94, 'REGISTRATION HUB', 'CHOOSE YOUR PATH', 0xffd66b, .9]
 ];
 const textItems = [];
