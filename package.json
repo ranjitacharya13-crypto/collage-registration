@@ -12,7 +12,6 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.8",
     "gsap": "^3.15.0",
     "three": "^0.165.0",
     "troika-three-text": "^0.52.5"
