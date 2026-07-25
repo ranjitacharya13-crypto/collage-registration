@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { join } from 'node:path';
 
-const PORT = Number(process.env.API_PORT || 5001);
+const PORT = Number(process.env.API_PORT || 1215);
 const ADMIN_PIN = process.env.ADMIN_PIN || '1234';
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin@123';

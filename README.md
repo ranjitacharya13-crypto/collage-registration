@@ -8,7 +8,7 @@ Interactive symposium journey with a local-first registration API and an optiona
 npm run dev
 ```
 
-The website runs at Vite's URL and the API runs on port `5001`. Registration data is persisted to `data/registrations.json`; this path is intentionally ignored by Git.
+The website runs at Vite's URL and the API runs on port `1215`. Registration data is persisted to `data/registrations.json`; this path is intentionally ignored by Git.
 
 Set secure administrator credentials before deployment:
 
