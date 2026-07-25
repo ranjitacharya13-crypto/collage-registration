@@ -54,3 +54,9 @@
 }
 /* Three routes now (Technical / Non-technical / Schedule) - let them flow. */
 .route-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));max-width:900px}
+/* ---------- Grouped participant fields in the registration form ---------- */
+.field-group-title{margin:24px 0 2px;padding-top:14px;border-top:1px solid #ffffff1a;font:700 11px 'DM Mono';letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
+.field-group-title small{font-weight:400;letter-spacing:.08em;text-transform:none;color:#8fa3bd}
+#team-fields[hidden],#partner-fields[hidden],#choice-field[hidden],#contact-title[hidden]{display:none}
+#choice-field select{display:block;width:100%;margin-top:7px;padding:14px;color:#fff;background:#ffffff0a;border:1px solid #ffffff25;font:16px 'Space Grotesk'}
+#choice-field label{display:block;margin:14px 0;font:11px 'DM Mono';letter-spacing:.1em;color:#b9c8db}

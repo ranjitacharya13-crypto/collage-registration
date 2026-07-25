@@ -24,6 +24,10 @@ function admin(req) { const token = cookies(req).aura_admin; return Boolean(toke
 async function body(req) { let text = ''; for await (const chunk of req) { text += chunk; if (text.length > 100_000) throw new Error('Request too large'); } return JSON.parse(text || '{}'); }
 function broadcast(type, payload) { const event = `event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`; for (const res of listeners) res.write(event); }
 function stats(rows) { const byEvent = Object.fromEntries([...allowedEvents].map(event => [event, 0])); rows.forEach(row => { byEvent[row.event] = (byEvent[row.event] || 0) + 1; }); return { total: rows.length, teams: rows.filter(r => r.teamName).length, byEvent, updatedAt: new Date().toISOString() }; }
+// Events entered as a pair, and the per-event dropdown options.
+const teamEvents = new Set(['Flush the Brain', 'Treasure Hunt', 'Murder Mystery', 'Debate']);
+const eventChoices = { Debate: ['Android', 'iOS'] };
+
 function validate(input) {
   const event = String(input.event || '').trim(); const name = String(input.name || '').trim(); const department = String(input.department || '').trim(); const year = String(input.year || '').trim(); const phone = String(input.phone || '').replace(/\s|-/g, ''); const email = String(input.email || '').trim().toLowerCase();
   if (!allowedEvents.has(event)) return { error: 'Select a valid event.' };
@@ -31,7 +35,30 @@ function validate(input) {
   if (!['1', '2', '3'].includes(year)) return { error: 'Select a valid year.' };
   if (!/^\+?[0-9]{10,15}$/.test(phone)) return { error: 'Enter a valid phone number.' };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter a valid email address.' };
-  return { value: { event, name, department, year, phone, email, teamName: String(input.teamName || '').trim() } };
+
+  const value = { event, name, department, year, phone, email, teamName: String(input.teamName || '').trim() };
+
+  // Team events need a team name and a complete second participant.
+  if (teamEvents.has(event)) {
+    const partnerName = String(input.partnerName || '').trim();
+    const partnerDepartment = String(input.partnerDepartment || '').trim();
+    const partnerYear = String(input.partnerYear || '').trim();
+    if (value.teamName.length < 2 || value.teamName.length > 80) return { error: 'Enter a team name between 2 and 80 characters.' };
+    if (partnerName.length < 2 || partnerName.length > 100) return { error: "Enter participant 2's full name." };
+    if (partnerDepartment.length < 2 || partnerDepartment.length > 100) return { error: "Enter participant 2's department." };
+    if (!['1', '2', '3'].includes(partnerYear)) return { error: "Select participant 2's year." };
+    if (partnerName.toLowerCase() === name.toLowerCase()) return { error: 'Participant 1 and participant 2 must be different people.' };
+    Object.assign(value, { partnerName, partnerDepartment, partnerYear });
+  }
+
+  // Per-event dropdown, e.g. the debate side.
+  const options = eventChoices[event];
+  if (options) {
+    const choice = String(input.choice || '').trim();
+    if (!options.includes(choice)) return { error: `Select one of: ${options.join(', ')}.` };
+    value.choice = choice;
+  }
+  return { value };
 }
 
 http.createServer(async (req, res) => {
@@ -54,7 +81,7 @@ http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/admin/registrations') { if (!admin(req)) return send(res, 401, { error: 'Unauthorized' }); const all = await records(); return send(res, 200, { registrations: all, dashboard: stats(all) }); }
     if (req.method === 'GET' && url.pathname === '/api/admin/analytics') { if (!admin(req)) return send(res, 401, { error: 'Unauthorized' }); return send(res, 200, stats(await records())); }
     if (req.method === 'GET' && url.pathname === '/api/admin/report') { if (!admin(req)) return send(res, 401, { error: 'Unauthorized' }); const report = stats(await records()); return send(res, 200, { ...report, recommendations: Object.entries(report.byEvent).filter(([, count]) => count === 0).map(([event]) => `Promote ${event}: no registrations yet.`) }); }
-    if (req.method === 'GET' && url.pathname === '/api/admin/export') { if (!admin(req)) return send(res, 401, { error: 'Unauthorized' }); const rows = await records(); const columns = ['id', 'event', 'teamName', 'name', 'department', 'year', 'phone', 'email', 'createdAt']; const csv = [columns.join(','), ...rows.map(row => columns.map(c => `"${String(row[c] || '').replaceAll('"', '""')}"`).join(','))].join('\n'); return res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="aura-2026-registrations.csv"' }).end(csv); }
+    if (req.method === 'GET' && url.pathname === '/api/admin/export') { if (!admin(req)) return send(res, 401, { error: 'Unauthorized' }); const rows = await records(); const columns = ['id', 'event', 'choice', 'teamName', 'name', 'department', 'year', 'partnerName', 'partnerDepartment', 'partnerYear', 'phone', 'email', 'createdAt']; const csv = [columns.join(','), ...rows.map(row => columns.map(c => `"${String(row[c] || '').replaceAll('"', '""')}"`).join(','))].join('\n'); return res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="aura-2026-registrations.csv"' }).end(csv); }
     return send(res, 404, { error: 'Not found' });
   } catch (error) { return send(res, 500, { error: error.message || 'Server error.' }); }
 }).listen(PORT, () => console.log(`Aura API running on http://localhost:${PORT}`));

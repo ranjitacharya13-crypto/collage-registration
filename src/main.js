@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Text } from 'troika-three-text';
 import { gsap } from 'gsap';
 import './style.css';
-import { DAYS, EVENTS, SYMPOSIUM, eventByRegistrationName, whenAndWhere } from './schedule.js';
+import { DAYS, EVENTS, SYMPOSIUM, eventByRegistrationName, isTeamEvent, whenAndWhere } from './schedule.js';
 
 const app = document.querySelector('#app');
 const isMobile = matchMedia('(pointer: coarse)').matches;
@@ -75,9 +75,9 @@ app.innerHTML = `
   <section id="creative" class="panel creative"><a href="#" class="back">← Back to journey</a><p class="eyebrow">Route 02 / Abstract art</p><h2>Non-Technical<br>Registration</h2><div class="cards">${eventCards('non-technical')}</div></section>`;
 
 app.insertAdjacentHTML('beforeend', `
-  <section id="register" class="form-panel"><button class="back close-form">← Back</button><p class="eyebrow">Aura 2026 / Registration</p><h2 id="form-event">Select an event</h2><p id="form-when" class="form-when"></p><form id="registration-form"><input id="event" name="event" type="hidden"><label>Full name<input name="name" required minlength="2" autocomplete="name"></label><label>Team name <small>(team events only)</small><input name="teamName" maxlength="80"></label><label>Department<input name="department" required minlength="2"></label><label>Year<select name="year" required><option value="">Select year</option><option>1</option><option>2</option><option>3</option></select></label><label>Phone number<input name="phone" type="tel" required pattern="[+0-9 -]{10,18}" autocomplete="tel"></label><label>Email ID<input name="email" type="email" required autocomplete="email"></label><button class="submit-register" type="submit">TRANSMIT REGISTRATION ↗</button><p id="form-status" role="status"></p></form></section>
+  <section id="register" class="form-panel"><button class="back close-form">← Back</button><p class="eyebrow">Aura 2026 / Registration</p><h2 id="form-event">Select an event</h2><p id="form-when" class="form-when"></p><form id="registration-form"><input id="event" name="event" type="hidden"><div id="team-fields" hidden><label>Team name<input name="teamName" maxlength="80" autocomplete="off"></label><p class="field-group-title">Participant 1 <small>(team leader)</small></p></div><label id="name-label">Full name<input name="name" required minlength="2" autocomplete="name"></label><div id="partner-fields" hidden><p class="field-group-title">Participant 2</p><label>Full name<input name="partnerName" minlength="2" autocomplete="off"></label><label>Department<input name="partnerDepartment" minlength="2" autocomplete="off"></label><label>Year<select name="partnerYear"><option value="">Select year</option><option>1</option><option>2</option><option>3</option></select></label></div><div id="choice-field" hidden><label id="choice-label">Choose<select name="choice"></select></label></div><p class="field-group-title" id="contact-title" hidden>Contact details <small>(participant 1)</small></p><label>Department<input name="department" required minlength="2"></label><label>Year<select name="year" required><option value="">Select year</option><option>1</option><option>2</option><option>3</option></select></label><label>Phone number<input name="phone" type="tel" required pattern="[+0-9 -]{10,18}" autocomplete="tel"></label><label>Email ID<input name="email" type="email" required autocomplete="email"></label><button class="submit-register" type="submit">TRANSMIT REGISTRATION ↗</button><p id="form-status" role="status"></p></form></section>
   <button id="admin-trigger" aria-label="Admin access"></button><section id="admin-gate" class="admin-gate"><div class="admin-window"><button class="close-admin" aria-label="Close">×</button><p class="eyebrow">Restricted terminal</p><h2 id="admin-title">Enter PIN</h2><form id="pin-form"><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="••••" required><button>VERIFY</button></form><form id="login-form" hidden><input name="username" placeholder="Admin account" autocomplete="username" required><input name="password" type="password" placeholder="Password" autocomplete="current-password" required><button>AUTHENTICATE</button></form><p id="admin-status" role="status"></p></div></section>
-  <section id="admin-dashboard" class="admin-dashboard"><button class="close-dashboard">×</button><p class="eyebrow">Authenticated administrator</p><h2>Registrations</h2><button id="export-data">DOWNLOAD EXCEL CSV ↗</button><div class="table-wrap"><table><thead><tr><th>Event</th><th>Name</th><th>Department</th><th>Year</th><th>Phone</th><th>Email</th></tr></thead><tbody id="registration-rows"></tbody></table></div></section>`);
+  <section id="admin-dashboard" class="admin-dashboard"><button class="close-dashboard">×</button><p class="eyebrow">Authenticated administrator</p><h2>Registrations</h2><button id="export-data">DOWNLOAD EXCEL CSV ↗</button><div class="table-wrap"><table><thead><tr><th>Event</th><th>Option</th><th>Team</th><th>Participant 1</th><th>Dept</th><th>Yr</th><th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th></tr></thead><tbody id="registration-rows"></tbody></table></div></section>`);
 
 // Cards are generated from schedule.js, so no post-render clean-up is needed.
 
@@ -155,11 +155,45 @@ const registerPanel = document.querySelector('#register');
 // Year 3 is not eligible for the non-technical events (mirrors the server rule).
 const nonTechnicalEvents = EVENTS.filter(e => e.category === 'non-technical').map(e => e.registrationName);
 function refreshYearThree(eventName) {
-  const select = document.querySelector('#registration-form select[name="year"]'); const thirdYear = [...select.options].find(option => option.value === '3');
-  thirdYear.disabled = nonTechnicalEvents.includes(eventName);
-  thirdYear.textContent = thirdYear.disabled ? '3 (not eligible)' : '3';
-  if (thirdYear.disabled && select.value === '3') select.value = '';
+  const blocked = nonTechnicalEvents.includes(eventName);
+  // Applies to both participants' year dropdowns.
+  document.querySelectorAll('#registration-form select[name="year"], #registration-form select[name="partnerYear"]').forEach(select => {
+    const thirdYear = [...select.options].find(option => option.value === '3');
+    if (!thirdYear) return;
+    thirdYear.disabled = blocked;
+    thirdYear.textContent = blocked ? '3 (not eligible)' : '3';
+    if (blocked && select.value === '3') select.value = '';
+  });
 }
+/** Shows team / partner / choice fields according to the selected event. */
+function configureForm(details) {
+  const teamEvent = isTeamEvent(details);
+  const teamFields = document.querySelector('#team-fields');
+  const partnerFields = document.querySelector('#partner-fields');
+  const contactTitle = document.querySelector('#contact-title');
+  const choiceField = document.querySelector('#choice-field');
+
+  teamFields.hidden = partnerFields.hidden = contactTitle.hidden = !teamEvent;
+  document.querySelector('#name-label').firstChild.textContent = teamEvent ? 'Full name' : 'Full name';
+  // Partner details are required only when the event is a team event.
+  partnerFields.querySelectorAll('input, select').forEach(field => { field.required = teamEvent; if (!teamEvent) field.value = ''; });
+  const teamNameInput = teamFields.querySelector('input[name="teamName"]');
+  teamNameInput.required = teamEvent;
+  if (!teamEvent) teamNameInput.value = '';
+
+  // Per-event dropdown, e.g. Android vs iOS for the debate.
+  const choice = details?.choice;
+  choiceField.hidden = !choice;
+  const select = choiceField.querySelector('select');
+  select.required = Boolean(choice);
+  if (choice) {
+    document.querySelector('#choice-label').firstChild.textContent = choice.label;
+    select.innerHTML = `<option value="">Select an option</option>${choice.options.map(option => `<option>${option}</option>`).join('')}`;
+  } else {
+    select.innerHTML = '';
+  }
+}
+
 document.querySelectorAll('.register').forEach(button => button.addEventListener('click', clickEvent => {
   clickEvent.preventDefault();
   // data-event holds the exact name the API expects, so no string guessing.
@@ -169,6 +203,8 @@ document.querySelectorAll('.register').forEach(button => button.addEventListener
   document.querySelector('#form-event').textContent = details ? details.name : eventName;
   document.querySelector('#form-when').textContent = details ? whenAndWhere(details) : '';
   document.querySelector('#form-status').textContent = '';
+  document.querySelector('#registration-form').reset();
+  configureForm(details);
   refreshYearThree(eventName);
   registerPanel.classList.add('open');
 }));
@@ -185,7 +221,8 @@ adminTrigger.addEventListener('pointermove', event => { if (!dragStart) return; 
 adminTrigger.addEventListener('pointerup', event => { if (!dragStart) return; const distance = Math.hypot(event.clientX-dragStart.x, event.clientY-dragStart.y); dragStart = null; if (distance > 24 && ++moves === 5) document.querySelector('#admin-gate').classList.add('open'); });
 document.querySelector('.close-admin').addEventListener('click', () => document.querySelector('#admin-gate').classList.remove('open'));
 document.querySelector('#pin-form').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch('/api/admin/pin', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))}); const result = await response.json(); document.querySelector('#admin-status').textContent = response.ok ? 'PIN accepted.' : result.error; if(response.ok){document.querySelector('#pin-form').hidden=true;document.querySelector('#login-form').hidden=false;document.querySelector('#admin-title').textContent='Administrator login';} });
-async function openDashboard(){ const response = await fetch('/api/admin/registrations'); const result = await response.json(); if(!response.ok) return; document.querySelector('#registration-rows').innerHTML = result.registrations.map(r => `<tr><td>${r.event}</td><td>${r.name}</td><td>${r.department}</td><td>${r.year}</td><td>${r.phone}</td><td>${r.email}</td></tr>`).join(''); document.querySelector('#admin-gate').classList.remove('open'); document.querySelector('#admin-dashboard').classList.add('open'); }
+const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+async function openDashboard(){ const response = await fetch('/api/admin/registrations'); const result = await response.json(); if(!response.ok) return; document.querySelector('#registration-rows').innerHTML = result.registrations.map(r => `<tr><td>${esc(r.event)}</td><td>${esc(r.choice)}</td><td>${esc(r.teamName)}</td><td>${esc(r.name)}</td><td>${esc(r.department)}</td><td>${esc(r.year)}</td><td>${esc(r.partnerName)}</td><td>${esc(r.partnerDepartment)}</td><td>${esc(r.partnerYear)}</td><td>${esc(r.phone)}</td><td>${esc(r.email)}</td></tr>`).join(''); document.querySelector('#admin-gate').classList.remove('open'); document.querySelector('#admin-dashboard').classList.add('open'); }
 document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))}); const result = await response.json(); document.querySelector('#admin-status').textContent = response.ok ? '' : result.error; if(response.ok) openDashboard(); });
 document.querySelector('.close-dashboard').addEventListener('click', () => document.querySelector('#admin-dashboard').classList.remove('open'));
 document.querySelector('#export-data').addEventListener('click', () => window.location.assign('/api/admin/export'));
