@@ -39,7 +39,6 @@ export const DAYS = [
       { name: 'Lunch Break', time: '1:20 PM — 1:50 PM', venue: 'Canteen', kind: 'break' },
       { name: 'Debate: Android vs iOS', time: '2:30 PM — 3:30 PM', venue: '3rd Class Room', kind: 'event',
         category: 'technical', team: 'Team of 2', rules: 'Android vs iOS · Moderated rounds' },
-      { name: 'Valedictory & Prizes', time: '4:00 PM — 4:45 PM', venue: 'Main Auditorium', kind: 'ceremony' },
     ],
   },
 ];
