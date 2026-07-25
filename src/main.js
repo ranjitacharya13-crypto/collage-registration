@@ -77,7 +77,32 @@ app.innerHTML = `
 app.insertAdjacentHTML('beforeend', `
   <section id="register" class="form-panel"><button class="back close-form">← Back</button><p class="eyebrow">Aura 2026 / Registration</p><h2 id="form-event">Select an event</h2><p id="form-when" class="form-when"></p><form id="registration-form"><input id="event" name="event" type="hidden"><div id="team-fields" hidden><label>Team name<input name="teamName" maxlength="80" autocomplete="off"></label><p class="field-group-title">Participant 1 <small>(team leader)</small></p></div><label id="name-label">Full name<input name="name" required minlength="2" autocomplete="name"></label><div id="partner-fields" hidden><p class="field-group-title">Participant 2</p><label>Full name<input name="partnerName" minlength="2" autocomplete="off"></label><label>Department<input name="partnerDepartment" minlength="2" autocomplete="off"></label><label>Year<select name="partnerYear"><option value="">Select year</option><option>1</option><option>2</option><option>3</option></select></label></div><div id="choice-field" hidden><label id="choice-label">Choose<select name="choice"></select></label></div><p class="field-group-title" id="contact-title" hidden>Contact details <small>(participant 1)</small></p><label>Department<input name="department" required minlength="2"></label><label>Year<select name="year" required><option value="">Select year</option><option>1</option><option>2</option><option>3</option></select></label><label>Phone number<input name="phone" type="tel" required pattern="[+0-9 -]{10,18}" autocomplete="tel"></label><label>Email ID<input name="email" type="email" required autocomplete="email"></label><button class="submit-register" type="submit">TRANSMIT REGISTRATION ↗</button><p id="form-status" role="status"></p></form></section>
   <button id="admin-trigger" aria-label="Admin access"></button><section id="admin-gate" class="admin-gate"><div class="admin-window"><button class="close-admin" aria-label="Close">×</button><p class="eyebrow">Restricted terminal</p><h2 id="admin-title">Enter PIN</h2><form id="pin-form"><input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="••••" required><button>VERIFY</button></form><form id="login-form" hidden><input name="username" placeholder="Admin account" autocomplete="username" required><input name="password" type="password" placeholder="Password" autocomplete="current-password" required><button>AUTHENTICATE</button></form><p id="admin-status" role="status"></p></div></section>
-  <section id="admin-dashboard" class="admin-dashboard"><button class="close-dashboard">×</button><p class="eyebrow">Authenticated administrator</p><h2>Registrations</h2><button id="export-data">DOWNLOAD EXCEL CSV ↗</button><div class="table-wrap"><table><thead><tr><th>Event</th><th>Option</th><th>Team</th><th>Participant 1</th><th>Dept</th><th>Yr</th><th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th></tr></thead><tbody id="registration-rows"></tbody></table></div></section>`);
+  <section id="admin-dashboard" class="admin-dashboard">
+    <div class="dash-head">
+      <div><p class="eyebrow">Authenticated administrator</p><h2>Registrations</h2></div>
+      <div class="dash-actions">
+        <button id="export-xlsx">DOWNLOAD EXCEL ↗</button>
+        <button id="export-csv" class="ghost">CSV</button>
+        <button id="admin-logout" class="ghost">LOG OUT</button>
+        <button class="close-dashboard" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div id="dash-stats" class="dash-stats"></div>
+    <div class="dash-tools">
+      <input id="dash-search" type="search" placeholder="Search name, email, phone, team, event…" autocomplete="off">
+      <label class="dash-live"><input id="dash-autorefresh" type="checkbox" checked> Live</label>
+      <span id="dash-count" class="dash-count"></span>
+    </div>
+    <div class="table-wrap"><table><thead><tr>
+      <th>#</th><th>Event</th><th>Option</th><th>Team</th><th>Participant 1</th><th>Dept</th><th>Yr</th>
+      <th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th><th>Registered</th>
+    </tr></thead><tbody id="registration-rows"></tbody></table></div>
+    <div class="dash-pager">
+      <button id="page-prev" class="ghost">← Prev</button>
+      <span id="page-info"></span>
+      <button id="page-next" class="ghost">Next →</button>
+    </div>
+  </section>`);
 
 // Cards are generated from schedule.js, so no post-render clean-up is needed.
 
@@ -210,9 +235,34 @@ document.querySelectorAll('.register').forEach(button => button.addEventListener
 }));
 document.querySelector('.close-form').addEventListener('click', () => registerPanel.classList.remove('open'));
 document.querySelector('#registration-form').addEventListener('submit', async event => {
-  event.preventDefault(); const status = document.querySelector('#form-status'); status.textContent = 'Transmitting…';
-  const data = Object.fromEntries(new FormData(event.currentTarget)); data.year = Number(data.year);
-  try { const response = await fetch('/api/registrations', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(data) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); status.textContent = `Registration received. ${result.dashboard.total} participants registered.`; event.currentTarget.reset(); } catch (error) { status.textContent = error.message; }
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = document.querySelector('#form-status');
+  const submit = form.querySelector('.submit-register');
+  if (submit.disabled) return;                    // guard against double submit
+  submit.disabled = true;
+  status.className = '';
+  status.textContent = 'Transmitting…';
+
+  const data = Object.fromEntries(new FormData(form));
+  try {
+    const response = await fetch('/api/registrations', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Registration failed. Please try again.');
+    status.className = 'ok';
+    status.textContent = `Registration confirmed. ${result.dashboard.total} participant${result.dashboard.total === 1 ? '' : 's'} registered.`;
+    form.reset();
+    configureForm(eventByRegistrationName[document.querySelector('#event').value]);
+  } catch (error) {
+    status.className = 'error';
+    status.textContent = error.message === 'Failed to fetch'
+      ? 'Cannot reach the server. Check your connection and try again.'
+      : error.message;
+  } finally {
+    submit.disabled = false;
+  }
 });
 
 const adminTrigger = document.querySelector('#admin-trigger'); let moves = 0, dragStart = null;
@@ -222,9 +272,71 @@ adminTrigger.addEventListener('pointerup', event => { if (!dragStart) return; co
 document.querySelector('.close-admin').addEventListener('click', () => document.querySelector('#admin-gate').classList.remove('open'));
 document.querySelector('#pin-form').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch('/api/admin/pin', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))}); const result = await response.json(); document.querySelector('#admin-status').textContent = response.ok ? 'PIN accepted.' : result.error; if(response.ok){document.querySelector('#pin-form').hidden=true;document.querySelector('#login-form').hidden=false;document.querySelector('#admin-title').textContent='Administrator login';} });
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-async function openDashboard(){ const response = await fetch('/api/admin/registrations'); const result = await response.json(); if(!response.ok) return; document.querySelector('#registration-rows').innerHTML = result.registrations.map(r => `<tr><td>${esc(r.event)}</td><td>${esc(r.choice)}</td><td>${esc(r.teamName)}</td><td>${esc(r.name)}</td><td>${esc(r.department)}</td><td>${esc(r.year)}</td><td>${esc(r.partnerName)}</td><td>${esc(r.partnerDepartment)}</td><td>${esc(r.partnerYear)}</td><td>${esc(r.phone)}</td><td>${esc(r.email)}</td></tr>`).join(''); document.querySelector('#admin-gate').classList.remove('open'); document.querySelector('#admin-dashboard').classList.add('open'); }
-document.querySelector('#login-form').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))}); const result = await response.json(); document.querySelector('#admin-status').textContent = response.ok ? '' : result.error; if(response.ok) openDashboard(); });
-document.querySelector('.close-dashboard').addEventListener('click', () => document.querySelector('#admin-dashboard').classList.remove('open'));
-document.querySelector('#export-data').addEventListener('click', () => window.location.assign('/api/admin/export'));
+const dashboard = { page: 1, pageSize: 50, query: '', pages: 1, total: 0, timer: null };
+
+function renderStats(summary) {
+  const cards = [`<b>${summary.total}</b><span>Total</span>`, `<b>${summary.teams}</b><span>Teams</span>`]
+    .concat(Object.entries(summary.byEvent).map(([event, count]) => `<b>${count}</b><span>${esc(event)}</span>`));
+  document.querySelector('#dash-stats').innerHTML = cards.map(card => `<div class="stat">${card}</div>`).join('');
+}
+
+async function loadDashboard() {
+  const params = new URLSearchParams({ page: dashboard.page, pageSize: dashboard.pageSize, q: dashboard.query });
+  let result;
+  try {
+    const response = await fetch(`/api/admin/registrations?${params}`);
+    if (response.status === 401) { closeDashboard(); document.querySelector('#admin-gate').classList.add('open'); return; }
+    if (!response.ok) return;
+    result = await response.json();
+  } catch { return; }   // offline: keep showing the last good data
+
+  dashboard.pages = result.pages; dashboard.total = result.total;
+  const offset = (result.page - 1) * result.pageSize;
+  document.querySelector('#registration-rows').innerHTML = result.rows.map((row, index) => `<tr>
+    <td>${offset + index + 1}</td><td>${esc(row.event)}</td><td>${esc(row.choice)}</td><td>${esc(row.teamName)}</td>
+    <td>${esc(row.name)}</td><td>${esc(row.department)}</td><td>${esc(row.year)}</td>
+    <td>${esc(row.partnerName)}</td><td>${esc(row.partnerDepartment)}</td><td>${esc(row.partnerYear)}</td>
+    <td>${esc(row.phone)}</td><td>${esc(row.email)}</td>
+    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>`).join('')
+    || '<tr><td colspan="13" class="empty">No registrations found.</td></tr>';
+
+  renderStats(result.dashboard);
+  document.querySelector('#dash-count').textContent = `${result.total} record${result.total === 1 ? '' : 's'}`;
+  document.querySelector('#page-info').textContent = `Page ${result.page} of ${result.pages}`;
+  document.querySelector('#page-prev').disabled = result.page <= 1;
+  document.querySelector('#page-next').disabled = result.page >= result.pages;
+}
+
+function setAutoRefresh(on) {
+  clearInterval(dashboard.timer);
+  dashboard.timer = on ? setInterval(loadDashboard, 5000) : null;
+}
+function closeDashboard() {
+  clearInterval(dashboard.timer); dashboard.timer = null;
+  document.querySelector('#admin-dashboard').classList.remove('open');
+}
+async function openDashboard() {
+  dashboard.page = 1; dashboard.query = '';
+  document.querySelector('#dash-search').value = '';
+  await loadDashboard();
+  document.querySelector('#admin-gate').classList.remove('open');
+  document.querySelector('#admin-dashboard').classList.add('open');
+  setAutoRefresh(document.querySelector('#dash-autorefresh').checked);
+}
+
+let searchTimer;
+document.querySelector('#dash-search').addEventListener('input', event => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { dashboard.query = event.target.value.trim(); dashboard.page = 1; loadDashboard(); }, 250);
+});
+document.querySelector('#dash-autorefresh').addEventListener('change', event => setAutoRefresh(event.target.checked));
+document.querySelector('#page-prev').addEventListener('click', () => { if (dashboard.page > 1) { dashboard.page -= 1; loadDashboard(); } });
+document.querySelector('#page-next').addEventListener('click', () => { if (dashboard.page < dashboard.pages) { dashboard.page += 1; loadDashboard(); } });
+document.querySelector('#export-xlsx').addEventListener('click', () => window.location.assign('/api/admin/export?format=xlsx'));
+document.querySelector('#export-csv').addEventListener('click', () => window.location.assign('/api/admin/export?format=csv'));
+document.querySelector('#admin-logout').addEventListener('click', async () => {
+  await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
+  closeDashboard();
+});
 
 gsap.from('.brand, header span', {opacity:0, y:-16, duration:1.1, stagger:.12, ease:'power3.out'}); requestAnimationFrame(render);

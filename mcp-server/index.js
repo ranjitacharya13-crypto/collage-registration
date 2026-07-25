@@ -4,14 +4,16 @@ import { execute } from './tools/index.js';
 
 const tools = [
   ['chat', 'Ask the configured local Ollama model a question.', { prompt: { type: 'string' } }],
+  ['list_registrations', 'View the registration list with optional search and pagination.', { query: { type: 'string' }, page: { type: 'number' }, pageSize: { type: 'number' } }],
+  ['export_excel', 'Write the full registration list to an Excel (.xlsx) or CSV file and return its path.', { format: { type: 'string', enum: ['xlsx', 'csv'] } }],
   ['database_query', 'Read registrations and registration statistics.', { query: { type: 'string', enum: ['registrations', 'statistics'] } }],
-  ['event_management', 'Return the symposium event catalogue.', {}],
+  ['event_management', 'Return the symposium schedule and event catalogue.', {}],
   ['registration_validation', 'Validate registration data without saving it.', { registration: { type: 'object' } }],
   ['analytics', 'Return registration analytics.', {}],
   ['live_dashboard', 'Return current live dashboard data.', {}],
   ['admin_commands', 'Execute a safe read-only admin command.', { command: { type: 'string', enum: ['health', 'report'] } }],
   ['report_generation', 'Generate a live registration report.', {}],
-  ['search', 'Search events and registrations.', { query: { type: 'string' } }],
+  ['search', 'Search registrations by name, email, phone, team or event.', { query: { type: 'string' } }],
   ['image_understanding', 'Future-ready image analysis placeholder.', { image: { type: 'string', description: 'Base64 image or local path' } }]
 ].map(([name, description, properties]) => ({ name, description, inputSchema: { type: 'object', properties, additionalProperties: false } }));
 const reply = message => process.stdout.write(`${JSON.stringify(message)}\n`);
