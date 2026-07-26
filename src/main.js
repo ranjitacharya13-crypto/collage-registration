@@ -339,4 +339,40 @@ document.querySelector('#admin-logout').addEventListener('click', async () => {
   closeDashboard();
 });
 
+// Step 2 of the admin gate: username + password, then open the dashboard.
+document.querySelector('#login-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('button');
+  const status = document.querySelector('#admin-status');
+  if (button.disabled) return;
+  button.disabled = true;
+  status.textContent = 'Authenticating…';
+  try {
+    const response = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(new FormData(form))),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Login failed.');
+    status.textContent = '';
+    form.reset();
+    await openDashboard();
+  } catch (error) {
+    status.textContent = error.message === 'Failed to fetch'
+      ? 'Cannot reach the server. Is the API running?'
+      : error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
+// Close the admin gate with Escape.
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  document.querySelector('#admin-gate').classList.remove('open');
+  if (document.querySelector('#admin-dashboard').classList.contains('open')) closeDashboard();
+});
+
 gsap.from('.brand, header span', {opacity:0, y:-16, duration:1.1, stagger:.12, ease:'power3.out'}); requestAnimationFrame(render);
