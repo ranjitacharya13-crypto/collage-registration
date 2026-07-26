@@ -8,6 +8,14 @@ const app = document.querySelector('#app');
 const isMobile = matchMedia('(pointer: coarse)').matches;
 
 const kindIcon = { event: '◆', break: '●', ceremony: '★' };
+const kindLabel = { event: 'Competition', ceremony: 'Ceremony', break: 'Break' };
+
+// Built from the schedule so the key only ever lists the kinds actually shown.
+// Removing every ceremony and break must not leave "★ Ceremony" in the legend.
+const legendEntries = ['event', 'ceremony', 'break']
+  .filter(kind => DAYS.some(day => day.items.some(item => item.kind === kind)))
+  .map(kind => `<span>${kindIcon[kind]} ${kindLabel[kind]}</span>`)
+  .join('');
 
 /** Renders one day column: heading with the date, then its timeline rows. */
 function dayColumn(day) {
@@ -62,7 +70,7 @@ app.innerHTML = `
     <p class="eyebrow">${SYMPOSIUM.dateRange} · ${SYMPOSIUM.college}</p>
     <h2>Event<br>Schedule</h2>
     <div class="day-grid">${DAYS.map(dayColumn).join('')}</div>
-    <p class="legend"><span>◆ Competition</span><span>★ Ceremony</span><span>● Break</span></p>
+    <p class="legend">${legendEntries}</p>
     <a class="schedule-cta" href="#registration-hub">Go to registration ↗</a>
   </section>
   <section id="registration-hub" class="choice" aria-hidden="true"><p class="eyebrow">Select your frequency</p><h2>Registration<br>Hub</h2><div class="route-grid">
@@ -137,10 +145,9 @@ const milestones = [
   [.045, 'SANKARA', 'POLYTECHNIC COLLEGE', 0x9fe8ff, 1.15],
   [.085, 'DEPARTMENT OF CSE', 'PRESENTS', 0xffd66b, .62],
   [.125, 'AURA 2026', SYMPOSIUM.dateRange, 0x00e5ff, 1.35],
-  [.175, 'OPENING ADDRESS', '10:20 AM — 10:50 AM', 0x92a1bd, .55],
   [.215, 'DAY 1', `${DAYS[0].date}\n${DAYS[0].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
-  [.41, 'TREASURE HUNT', '11:30 AM — 12:30 PM', 0xff2e9f, .85], [.49, 'LUNCH BREAK', '1:20 PM — 1:50 PM', 0x92a1bd, .55],
-  [.56, 'BUG HUNT', '2:30 PM — 3:15 PM', 0x00e5ff, .85], [.62, 'SINGING & DANCE', '2:15 PM — 4:00 PM', 0xffd66b, .6],
+  [.45, 'TREASURE HUNT', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
+  [.57, 'BUG HUNT', '2:30 PM — 3:15 PM', 0x00e5ff, .85],
   [.70, 'DAY 2', `${DAYS[1].date}\n${DAYS[1].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.78, 'MURDER MYSTERY', '11:30 AM — 12:45 PM', 0xff2e9f, .85],
   [.85, 'DEBATE', '2:30 PM — 3:30 PM', 0x00e5ff, .9], [.94, 'REGISTRATION HUB', 'CHOOSE YOUR PATH', 0xffd66b, .9]
 ];
