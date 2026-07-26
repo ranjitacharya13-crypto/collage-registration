@@ -37,6 +37,34 @@ begin
   end if;
 end $$;
 
+-- Drop every CHECK constraint on the table BEFORE changing column types.
+-- The first version had "year between 1 and 3"; once year becomes text that
+-- constraint reads as "text >= integer" and Postgres refuses the conversion.
+do $$
+declare
+  constraint_name text;
+begin
+  for constraint_name in
+    select con.conname
+      from pg_constraint con
+      join pg_class rel on rel.oid = con.conrelid
+      join pg_namespace nsp on nsp.oid = rel.relnamespace
+     where nsp.nspname = 'public' and rel.relname = 'registrations' and con.contype = 'c'
+  loop
+    execute format('alter table public.registrations drop constraint %I', constraint_name);
+  end loop;
+end $$;
+
+-- Triggers from the first version compare year to an integer too, so remove
+-- them before the type change.
+drop trigger if exists registration_capacity_guard       on public.registrations;
+drop trigger if exists registration_total_capacity_guard on public.registrations;
+drop trigger if exists registration_year_three_guard     on public.registrations;
+drop function if exists public.enforce_year_three_capacity();
+drop function if exists public.enforce_total_registration_capacity();
+drop function if exists public.year_three_slots(text);
+drop function if exists public.registration_slots_remaining();
+
 -- year was integer in the first version; the app treats it as text.
 do $$
 declare
@@ -159,12 +187,6 @@ returns jsonb language sql security definer set search_path = public as $$
                          from (select event, count(*) as c from public.registrations group by event) s), '{}'::jsonb)
   );
 $$;
-
--- 10. Remove functions left over from the first version.
-drop function if exists public.year_three_slots(text);
-drop function if exists public.registration_slots_remaining();
-drop function if exists public.enforce_year_three_capacity();
-drop function if exists public.enforce_total_registration_capacity();
 
 revoke all on function public.create_registration(jsonb, integer) from anon, authenticated;
 revoke all on function public.registration_stats()                from anon, authenticated;
