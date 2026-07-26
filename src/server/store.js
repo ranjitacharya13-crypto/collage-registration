@@ -5,16 +5,25 @@
 //
 // Both modules export the same interface, so nothing else in the codebase
 // needs to know which one is in use.
-//
-// In production a missing Supabase configuration is a hard failure. Silently
-// falling back to a local file would mean registrations are written to a disk
-// that disappears on the next deploy, which is worse than not starting at all.
 
 const hasSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+// On serverless, process.exit() kills the invocation and the browser sees an
+// opaque platform error. Record the misconfiguration so the API can return a
+// readable message instead.
+export let configError = null;
+const fail = message => {
+  configError = message;
+  console.error(`[storage] ${message}`);
+  if (!isServerless) process.exit(1);
+};
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.REQUIRE_SUPABASE === 'true';
 const allowLocalFallback = process.env.ALLOW_SQLITE_FALLBACK === 'true';
 
 if (!hasSupabase && isProduction && !allowLocalFallback) {
+  fail('No cloud database configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   console.error(`
 ┌──────────────────────────────────────────────────────────────────┐
 │  REFUSING TO START: no cloud database configured                 │
@@ -33,16 +42,13 @@ if (!hasSupabase && isProduction && !allowLocalFallback) {
 │    ALLOW_SQLITE_FALLBACK=true                                    │
 └──────────────────────────────────────────────────────────────────┘
 `);
-  process.exit(1);
 }
 
 if (hasSupabase) {
   const url = process.env.SUPABASE_URL.trim()
     .replace(/\/+$/, '').replace(/\/rest\/v1$/i, '').replace(/\/+$/, '');
   if (/^postgres(ql)?:\/\//i.test(url)) {
-    console.error('[storage] SUPABASE_URL is a database connection string, not the API URL.');
-    console.error('[storage] Use the Project URL: https://<project-ref>.supabase.co');
-    process.exit(1);
+    fail('SUPABASE_URL is a database connection string, not the API URL. Use https://<project-ref>.supabase.co');
   }
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url)) {
     console.warn(`[storage] SUPABASE_URL does not look like a project URL: ${url}`);
@@ -51,15 +57,13 @@ if (hasSupabase) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY.trim();
   // The publishable/anon key cannot write past RLS, so catch that mix-up early.
   if (key.startsWith('sb_publishable_') || key.startsWith('sbp_')) {
-    console.error('[storage] SUPABASE_SERVICE_ROLE_KEY looks like a PUBLISHABLE key.');
-    console.error('[storage] Use the service_role (secret) key: Project Settings -> API -> Reveal.');
-    process.exit(1);
+    fail('SUPABASE_SERVICE_ROLE_KEY looks like a PUBLISHABLE key. Use the service_role secret: Project Settings -> API -> Reveal.');
   }
 }
 
 const backend = hasSupabase
   ? await import('./supabase-db.js')
-  : await import('./db.js');
+  : (isServerless ? await import('./unavailable-db.js') : await import('./db.js'));
 
 export const STORAGE = hasSupabase ? 'supabase' : 'sqlite';
 
