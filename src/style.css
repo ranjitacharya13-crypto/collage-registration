@@ -169,3 +169,21 @@ select option[value=""]{color:#93a6bd}
 .admin-window select:focus{outline:0;border-color:var(--cyan)}
 /* Firefox keeps a dotted focus ring on the selected text. */
 select:-moz-focusring{color:transparent;text-shadow:0 0 0 #edf5ff}
+
+/* ---------- Title cards in the heads-up display ---------- */
+/* The opening titles use the same big glowing treatment as the event names,
+   with an accent colour per card. */
+.event-name[data-tone="ice"]{text-shadow:0 0 12px #9fe8ff,0 0 34px #9fe8ff88}
+.event-name[data-tone="amber"]{text-shadow:0 0 12px #ffd66b,0 0 34px #ffd66b88}
+.event-name[data-tone="cyan"]{text-shadow:0 0 12px #00e5ff,0 0 32px #00e5ff88}
+.event-detail[data-tone="ice"]{color:#e8f6ff;text-shadow:0 0 12px #9fe8ff88}
+.event-detail[data-tone="amber"]{color:#ffeec4;text-shadow:0 0 12px #ffd66b88}
+.event-detail[data-tone="cyan"]{color:#dcecff;text-shadow:0 0 12px #00e5ff88}
+/* "DEPARTMENT OF CSE" is long: let it wrap and shrink rather than overflow. */
+.event-name.is-title{
+  font-size:clamp(26px,7.5vw,66px);
+  letter-spacing:-.04em;
+  overflow-wrap:break-word;
+  text-wrap:balance;
+}
+.event-detail{letter-spacing:.16em}
