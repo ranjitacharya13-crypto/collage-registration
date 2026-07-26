@@ -77,11 +77,24 @@ try {
   }
   pass('Connected and the registrations table exists');
 
+  // 4b. Column shape — an older table can exist but be missing new columns.
+  const probe = await call('/rest/v1/registrations?select=choice,team_name,partner_name,partner_department,partner_year&limit=1');
+  if (!probe.ok) {
+    fail('The registrations table is from an older version (missing columns)');
+    info(probe.body.message || probe.text.slice(0, 160));
+    info('Run the updated supabase-schema.sql — it migrates the existing table.');
+    process.exit(1);
+  }
+  pass('Table has all the columns this version needs');
+
   // 5. Required functions
   const statsCall = await call('/rest/v1/rpc/registration_stats', { method: 'POST', body: '{}' });
   if (!statsCall.ok) {
     fail('Function registration_stats() is missing');
-    info('Re-run supabase-schema.sql — it was not applied completely.');
+    info('The SQL script did not finish. Supabase rolls back the whole script');
+    info('when any statement fails, so no functions were created.');
+    info('Run the updated supabase-schema.sql (it handles an existing table),');
+    info('and read the error shown in the SQL Editor if it fails again.');
     process.exit(1);
   }
   pass('Function registration_stats() is present');

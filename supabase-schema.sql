@@ -1,46 +1,100 @@
--- AURA 2026 — Supabase schema.
--- Run this once in the Supabase dashboard: SQL Editor → New query → paste → Run.
--- Safe to re-run: every statement is idempotent.
+-- AURA 2026 — Supabase schema (migration-safe).
+--
+-- Run this in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
+-- Safe to run repeatedly, and safe on a database that still has the ORIGINAL
+-- table from the first version of this project: missing columns are added and
+-- the year column is converted from integer to text rather than being skipped.
 
 create extension if not exists pgcrypto;
 
+-- 1. Base table (only when nothing exists yet).
 create table if not exists public.registrations (
-  id                 uuid primary key default gen_random_uuid(),
-  event              text not null check (event in
-                       ('Flush the Brain','Treasure Hunt','Bug Hunt','Murder Mystery','Debate')),
-  choice             text,
-  team_name          text,
-  name               text not null,
-  department         text not null,
-  year               text not null check (year in ('1','2','3')),
-  partner_name       text,
-  partner_department text,
-  partner_year       text,
-  phone              text not null,
-  email              text not null,
-  -- Normalised keys power the duplicate constraints below.
-  email_key          text generated always as (lower(btrim(email))) stored,
-  phone_key          text generated always as (right(regexp_replace(phone, '[^0-9]', '', 'g'), 10)) stored,
-  created_at         timestamptz not null default now()
+  id         uuid primary key default gen_random_uuid(),
+  event      text not null,
+  name       text not null,
+  department text not null,
+  year       text not null,
+  phone      text not null,
+  email      text not null,
+  created_at timestamptz not null default now()
 );
 
--- Duplicate protection, enforced by the database so it holds even when two
--- students submit at the same instant.
+-- 2. Bring an older table up to date. Each step is independent and idempotent.
+alter table public.registrations add column if not exists choice             text;
+alter table public.registrations add column if not exists team_name          text;
+alter table public.registrations add column if not exists partner_name       text;
+alter table public.registrations add column if not exists partner_department text;
+alter table public.registrations add column if not exists partner_year       text;
+alter table public.registrations add column if not exists created_at         timestamptz not null default now();
+
+-- The first version stored teamName; carry any data across, then drop it.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'registrations' and column_name = 'teamname') then
+    execute 'update public.registrations set team_name = coalesce(team_name, "teamName") where "teamName" is not null';
+    execute 'alter table public.registrations drop column "teamName"';
+  end if;
+end $$;
+
+-- year was integer in the first version; the app treats it as text.
+do $$
+declare
+  current_type text;
+begin
+  select data_type into current_type from information_schema.columns
+   where table_schema = 'public' and table_name = 'registrations' and column_name = 'year';
+  if current_type in ('integer', 'bigint', 'smallint') then
+    execute 'alter table public.registrations alter column year type text using year::text';
+  end if;
+end $$;
+
+-- 3. Normalised keys that power duplicate detection.
+--    Generated columns cannot be added conditionally inside one statement, so
+--    check first. Existing rows are backfilled automatically by Postgres.
+do $$
+begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'registrations' and column_name = 'email_key') then
+    execute $sql$alter table public.registrations
+                 add column email_key text generated always as (lower(btrim(email))) stored$sql$;
+  end if;
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'registrations' and column_name = 'phone_key') then
+    execute $sql$alter table public.registrations
+                 add column phone_key text generated always as
+                 (right(regexp_replace(phone, '[^0-9]', '', 'g'), 10)) stored$sql$;
+  end if;
+end $$;
+
+-- 4. Event name check. Drop the old constraint first: the original version
+--    allowed different names, which would reject valid rows now.
+alter table public.registrations drop constraint if exists registrations_event_check;
+alter table public.registrations add  constraint registrations_event_check
+  check (event in ('Flush the Brain','Treasure Hunt','Bug Hunt','Murder Mystery','Debate'))
+  not valid;   -- not valid = existing rows are left alone, new rows are checked
+
+alter table public.registrations drop constraint if exists registrations_year_check;
+alter table public.registrations add  constraint registrations_year_check
+  check (year in ('1','2','3')) not valid;
+
+-- 5. Duplicate protection, enforced by the database so it holds even when two
+--    students submit at the same instant.
+--    If this fails you already have duplicate rows: the query at the very
+--    bottom of this file will show them.
 create unique index if not exists uniq_event_email on public.registrations (event, email_key);
 create unique index if not exists uniq_event_phone on public.registrations (event, phone_key);
 
 create index if not exists idx_registrations_event      on public.registrations (event);
 create index if not exists idx_registrations_created_at on public.registrations (created_at desc);
 
--- Row Level Security: the API talks to Postgres with the service role key,
--- which bypasses RLS. Enabling it with no public policy means that even if the
--- anon key leaks, nobody can read or write participant data directly.
+-- 6. Row Level Security: the API uses the service role key, which bypasses RLS.
+--    Enabling it with no public policy means a leaked anon key grants nothing.
 alter table public.registrations enable row level security;
-
 drop policy if exists "public can create registrations" on public.registrations;
 drop policy if exists "anon can read registrations"     on public.registrations;
 
--- Year 3 eligibility, enforced server-side as well as in the form.
+-- 7. Year 3 eligibility, enforced server-side as well as in the form.
 create or replace function public.enforce_year_three_rule()
 returns trigger language plpgsql as $$
 begin
@@ -54,13 +108,15 @@ begin
 end;
 $$;
 
-drop trigger if exists registration_year_three_guard on public.registrations;
+drop trigger if exists registration_capacity_guard        on public.registrations;
+drop trigger if exists registration_total_capacity_guard  on public.registrations;
+drop trigger if exists registration_year_three_guard      on public.registrations;
 create trigger registration_year_three_guard
   before insert on public.registrations
   for each row execute function public.enforce_year_three_rule();
 
--- Atomic insert with an optional global cap. Counting and inserting inside one
--- function call prevents the last place being handed to two people at once.
+-- 8. Atomic insert with an optional global cap. Counting and inserting in one
+--    call prevents the last place being handed to two people at once.
 create or replace function public.create_registration(payload jsonb, total_capacity integer default 0)
 returns public.registrations
 language plpgsql security definer set search_path = public as $$
@@ -68,7 +124,6 @@ declare
   inserted public.registrations;
 begin
   if total_capacity > 0 then
-    -- Serialise concurrent callers so the count cannot go stale mid-insert.
     perform pg_advisory_xact_lock(hashtext('aura_registration_capacity'));
     if (select count(*) from public.registrations) >= total_capacity then
       raise exception 'Registration is closed. All % places are filled.', total_capacity
@@ -94,7 +149,7 @@ begin
 end;
 $$;
 
--- Aggregate counts in one round trip for the dashboard.
+-- 9. Dashboard counts in a single round trip.
 create or replace function public.registration_stats()
 returns jsonb language sql security definer set search_path = public as $$
   select jsonb_build_object(
@@ -105,5 +160,19 @@ returns jsonb language sql security definer set search_path = public as $$
   );
 $$;
 
+-- 10. Remove functions left over from the first version.
+drop function if exists public.year_three_slots(text);
+drop function if exists public.registration_slots_remaining();
+drop function if exists public.enforce_year_three_capacity();
+drop function if exists public.enforce_total_registration_capacity();
+
 revoke all on function public.create_registration(jsonb, integer) from anon, authenticated;
-revoke all on function public.registration_stats() from anon, authenticated;
+revoke all on function public.registration_stats()                from anon, authenticated;
+
+-- Done. Expect "Success. No rows returned."
+--
+-- If step 5 failed with "could not create unique index", you have duplicates.
+-- Find them with:
+--   select event, lower(btrim(email)) as email, count(*)
+--     from public.registrations group by 1,2 having count(*) > 1;
+-- Delete the extras, then run this file again.
