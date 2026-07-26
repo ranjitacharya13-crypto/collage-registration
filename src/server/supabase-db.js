@@ -1,22 +1,42 @@
 // Supabase (Postgres) storage adapter.
 //
 // Exposes the same interface as db.js so server.js, the MCP agent and the
-// export script work unchanged. Selected automatically by src/server/store.js
-// when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.
+// export script work unchanged.
 //
 // All calls go through PostgREST with the service role key, which stays on the
-// server and never reaches the browser.
+// server and never reaches the browser. Writes retry with exponential backoff
+// so a transient network blip does not lose a student's registration.
 
 const URL_BASE = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const TABLE = 'registrations';
-const REQUEST_TIMEOUT_MS = Number(process.env.SUPABASE_TIMEOUT_MS || 10_000);
+const REQUEST_TIMEOUT_MS = Number(process.env.SUPABASE_TIMEOUT_MS || 12_000);
+const MAX_RETRIES = Number(process.env.SUPABASE_MAX_RETRIES || 3);
+
+// Keep-alive connection pool: without this every request pays a fresh TLS
+// handshake, which is the difference between coping with a rush and timing out.
+// Node ships undici internally; use the package if present, else rely on
+// Node's built-in fetch, which already pools connections per origin.
+try {
+  const undici = await import('undici');
+  undici.setGlobalDispatcher(new undici.Agent({
+    keepAliveTimeout: 30_000,
+    keepAliveMaxTimeout: 60_000,
+    connections: Number(process.env.SUPABASE_POOL || 64),
+  }));
+} catch {
+  // undici not installed as a package: Node's built-in fetch already pools
+  // connections per origin, which is sufficient.
+}
 
 export class DuplicateError extends Error {
   constructor(message) { super(message); this.name = 'DuplicateError'; }
 }
 export class CapacityError extends Error {
   constructor(message) { super(message); this.name = 'CapacityError'; }
+}
+export class StorageUnavailableError extends Error {
+  constructor(message) { super(message); this.name = 'StorageUnavailableError'; }
 }
 
 const headers = {
@@ -25,34 +45,68 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-/** fetch with a timeout and one retry, so a blip does not fail a registration. */
-async function request(path, options = {}, attempt = 0) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetch(`${URL_BASE}${path}`, {
-      ...options,
-      headers: { ...headers, ...options.headers },
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      const body = await response.text();
-      let parsed = {};
-      try { parsed = JSON.parse(body); } catch { /* plain text error */ }
-      const error = new Error(parsed.message || parsed.hint || body || `Supabase error ${response.status}`);
-      error.status = response.status;
-      error.code = parsed.code;
-      throw error;
-    }
-    return response.status === 204 ? null : response.json();
-  } catch (error) {
-    // Retry once on a network/timeout error, never on a real HTTP error.
-    const retryable = !error.status && attempt === 0;
-    if (retryable) return request(path, options, attempt + 1);
-    throw error;
-  } finally {
-    clearTimeout(timer);
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/** A duplicate or rule violation must never be retried — it will never succeed. */
+function classify(status, parsed, text) {
+  const message = parsed.message || parsed.hint || text || '';
+  if (parsed.code === '23505' || /duplicate key|uniq_event_/i.test(message)) {
+    return new DuplicateError('This email or phone number is already registered for that event.');
   }
+  if (/Registration is closed/i.test(message)) return new CapacityError(message);
+  if (/not eligible/i.test(message)) return new CapacityError(message);
+  if (status === 401 || status === 403) {
+    return new StorageUnavailableError('Database rejected our credentials. Check SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  if (status === 404 && /relation|function/i.test(message)) {
+    return new StorageUnavailableError('Database schema missing. Run supabase-schema.sql in the SQL Editor.');
+  }
+  const error = new Error(message || `Supabase error ${status}`);
+  error.status = status;
+  error.code = parsed.code;
+  return error;
+}
+
+/**
+ * fetch with timeout and exponential backoff.
+ * Retries only on network errors and 5xx / 429 — never on a definitive answer.
+ */
+async function request(path, options = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(`${URL_BASE}${path}`, {
+        ...options,
+        headers: { ...headers, ...options.headers },
+        signal: controller.signal,
+      });
+
+      if (response.ok) return response.status === 204 ? null : response.json();
+
+      const text = await response.text();
+      let parsed = {};
+      try { parsed = JSON.parse(text); } catch { /* plain text */ }
+      const error = classify(response.status, parsed, text);
+
+      // Definitive answers propagate immediately.
+      if (error instanceof DuplicateError || error instanceof CapacityError) throw error;
+      const retryable = response.status >= 500 || response.status === 429;
+      if (!retryable || attempt === MAX_RETRIES) throw error;
+      lastError = error;
+    } catch (error) {
+      if (error instanceof DuplicateError || error instanceof CapacityError) throw error;
+      if (error instanceof StorageUnavailableError) throw error;
+      lastError = error;
+      if (attempt === MAX_RETRIES) break;
+    } finally {
+      clearTimeout(timer);
+    }
+    await sleep(Math.min(2000, 200 * 2 ** attempt) + Math.random() * 100);
+  }
+  throw new StorageUnavailableError(
+    `Could not reach the database after ${MAX_RETRIES + 1} attempts: ${lastError?.message || 'unknown error'}`);
 }
 
 const fromRow = row => row && ({
@@ -74,21 +128,10 @@ const fromRow = row => row && ({
 const SELECT = 'id,event,choice,team_name,name,department,year,partner_name,partner_department,partner_year,phone,email,created_at';
 
 export async function createRegistration(value, limits = {}) {
-  let row;
-  try {
-    row = await request('/rest/v1/rpc/create_registration', {
-      method: 'POST',
-      body: JSON.stringify({ payload: value, total_capacity: limits.total || 0 }),
-    });
-  } catch (error) {
-    const message = String(error.message || '');
-    if (error.code === '23505' || /duplicate key|uniq_event_/i.test(message)) {
-      throw new DuplicateError('This email or phone number is already registered for that event.');
-    }
-    if (/Registration is closed/i.test(message)) throw new CapacityError(message);
-    if (/not eligible/i.test(message)) throw new CapacityError(message);
-    throw error;
-  }
+  const row = await request('/rest/v1/rpc/create_registration', {
+    method: 'POST',
+    body: JSON.stringify({ payload: value, total_capacity: limits.total || 0 }),
+  });
   return fromRow(Array.isArray(row) ? row[0] : row);
 }
 
@@ -105,7 +148,7 @@ export async function stats(knownEvents = []) {
   };
 }
 
-/** Every row, paged through PostgREST's limit so large exports stay complete. */
+/** Every row, paged so large exports stay complete past PostgREST's limit. */
 export async function allRegistrations() {
   const pageSize = 1000;
   const rows = [];
@@ -114,6 +157,7 @@ export async function allRegistrations() {
       `/rest/v1/${TABLE}?select=${SELECT}&order=created_at.desc&limit=${pageSize}&offset=${offset}`);
     rows.push(...page.map(fromRow));
     if (page.length < pageSize) break;
+    if (rows.length > 100_000) break;   // safety valve
   }
   return rows;
 }
@@ -126,30 +170,52 @@ export async function listRegistrations({ page = 1, pageSize = 50, query = '' } 
 
   let filter = '';
   if (term) {
-    // Escape PostgREST's or() syntax characters before interpolating.
-    const safe = term.replace(/[(),*]/g, ' ').trim();
-    const like = `*${safe}*`;
-    filter = '&or=(' + [
-      `name.ilike.${like}`, `email.ilike.${like}`, `phone.ilike.${like}`,
-      `department.ilike.${like}`, `team_name.ilike.${like}`,
-      `partner_name.ilike.${like}`, `event.ilike.${like}`,
-    ].join(',') + ')';
+    // Neutralise PostgREST's or() syntax characters before interpolating.
+    const safe = term.replace(/[(),*"\\]/g, ' ').trim();
+    if (safe) {
+      const like = `*${safe}*`;
+      filter = '&or=(' + [
+        `name.ilike.${like}`, `email.ilike.${like}`, `phone.ilike.${like}`,
+        `department.ilike.${like}`, `team_name.ilike.${like}`,
+        `partner_name.ilike.${like}`, `event.ilike.${like}`,
+      ].join(',') + ')';
+    }
   }
 
-  const response = await fetch(
-    `${URL_BASE}/rest/v1/${TABLE}?select=${SELECT}${filter}&order=created_at.desc&limit=${size}&offset=${from}`,
-    { headers: { ...headers, Prefer: 'count=exact', Range: `${from}-${from + size - 1}` } });
-
-  if (!response.ok) throw new Error(await response.text());
-  const rows = (await response.json()).map(fromRow);
-  const total = Number((response.headers.get('content-range') || '').split('/')[1] || rows.length);
-
-  return { rows, total, page: current, pageSize: size, pages: Math.max(1, Math.ceil(total / size)) };
+  const path = `/rest/v1/${TABLE}?select=${SELECT}${filter}&order=created_at.desc&limit=${size}&offset=${from}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${URL_BASE}${path}`, {
+      headers: { ...headers, Prefer: 'count=exact' },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new StorageUnavailableError(await response.text());
+    const rows = (await response.json()).map(fromRow);
+    const total = Number((response.headers.get('content-range') || '').split('/')[1] || rows.length);
+    return { rows, total, page: current, pageSize: size, pages: Math.max(1, Math.ceil(total / size)) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Verifies credentials and that the schema has been applied. */
 export async function verifyConnection() {
+  if (!URL_BASE) throw new StorageUnavailableError('SUPABASE_URL is empty.');
+  if (!SERVICE_KEY) throw new StorageUnavailableError('SUPABASE_SERVICE_ROLE_KEY is empty.');
   await request('/rest/v1/rpc/registration_stats', { method: 'POST', body: '{}' });
+  // Confirm the table itself is reachable, not just the RPC.
+  await request(`/rest/v1/${TABLE}?select=id&limit=1`);
+}
+
+export async function healthCheck() {
+  const started = Date.now();
+  try {
+    await request('/rest/v1/rpc/registration_stats', { method: 'POST', body: '{}' });
+    return { ok: true, latencyMs: Date.now() - started };
+  } catch (error) {
+    return { ok: false, latencyMs: Date.now() - started, error: error.message };
+  }
 }
 
 export function closeDatabase() { /* stateless HTTP client */ }

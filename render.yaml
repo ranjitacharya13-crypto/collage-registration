@@ -1,0 +1,24 @@
+# Render.com blueprint. Set the two Supabase values in the dashboard as secrets.
+services:
+  - type: web
+    name: aura-2026
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_PIN
+        sync: false

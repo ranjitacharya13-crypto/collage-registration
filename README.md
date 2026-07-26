@@ -43,41 +43,88 @@ Put the app behind a TLS terminator (Nginx, Caddy, Cloudflare) in production;
 the session cookie is marked `Secure` automatically when it sees
 `X-Forwarded-Proto: https`.
 
-## Data
+## Database — Supabase (required for the live site)
 
-Two storage backends. The API picks one automatically at startup and prints
-which it is using.
+Registrations are stored in Supabase Postgres so they survive redeploys and are
+shared by every instance. In production the server **refuses to start** without
+it, rather than silently writing to a local file that would be lost.
 
-### Permanent cloud database (Supabase) — recommended for the live site
+### Setup (once)
 
-1. In the Supabase dashboard open **SQL Editor → New query**, paste the whole
-   of `supabase-schema.sql`, and click **Run**.
-2. Open **Project Settings → API** and copy:
-   - **Project URL** → `SUPABASE_URL`
-   - **service_role / secret** key (click *Reveal*) → `SUPABASE_SERVICE_ROLE_KEY`
-3. Put both in `.env` and restart. You should see:
+1. **Create the tables.** Supabase dashboard -> **SQL Editor** -> **New query**,
+   paste the whole of `supabase-schema.sql`, click **Run**.
+2. **Copy your keys.** **Project Settings -> API**:
+   - *Project URL* -> `SUPABASE_URL`
+   - *service_role* secret (click **Reveal**) -> `SUPABASE_SERVICE_ROLE_KEY`
+3. **Put them in `.env`**, then verify:
+
+```bash
+npm run check-db
+```
+
+That script checks the URL and key format, connectivity, that the table and
+both functions exist, and that duplicate protection is active. It writes one
+test row and deletes it again. Fix anything it reports before publishing.
+
+4. **Run it:**
+
+```bash
+npm run dev      # development
+npm start        # production (build first)
+```
+
+You should see:
 
 ```
 Storage: Supabase (permanent cloud database) — connected.
 ```
 
-Data then lives in Postgres, survives redeploys, and is shared by every
-instance of the app. The service role key stays on the server and is never
-sent to the browser.
+If it says `local SQLite file`, the two variables are not set.
 
-### Local file (default)
+### What the database guarantees
 
-With the Supabase values blank, registrations are stored in SQLite at
-`data/aura.db`. Fine for development, but the file lives on one machine only.
+- **No duplicates.** UNIQUE indexes on normalised email and phone *per event*,
+  enforced by Postgres, so two simultaneous submissions cannot both win.
+- **Atomic capacity.** `create_registration()` takes an advisory lock before
+  counting, so the last place cannot be given to two people.
+- **Eligibility.** A trigger blocks Year 3 from the non-technical events even if
+  the request bypasses the form.
+- **Locked down.** Row Level Security is on with no public policy. Only the
+  server's service_role key can read or write.
 
-### Guarantees (both backends)
+### If the database goes down
 
-- Duplicate email or phone **per event** is rejected by a database UNIQUE
-  index, so it holds even when submissions arrive simultaneously.
-- Capacity is enforced inside the insert, so the last place cannot be given to
-  two people.
-- An older `data/registrations.json` is imported automatically on first start
-  (SQLite mode).
+The site stays up. Registrations return a clear "please try again in a moment"
+message with HTTP 503, reads fall back to the last known counts, and the API
+retries transient failures three times with backoff. `/api/health` reports
+`database: unreachable` so your monitoring can alert you.
+
+## Deploying
+
+Any Node 22+ host works. One process serves both the site and the API.
+
+```bash
+npm install
+npm run build
+NODE_ENV=production npm start
+```
+
+Required environment variables in production:
+
+| Variable | Purpose |
+|---|---|
+| `SUPABASE_URL` | Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role secret |
+| `ADMIN_USER`, `ADMIN_PASSWORD`, `ADMIN_PIN` | dashboard access |
+| `API_HOST=0.0.0.0` | listen on all interfaces |
+| `NODE_ENV=production` | enforces the database requirement |
+| `TOTAL_CAPACITY` | optional hard cap |
+
+`Dockerfile` and `render.yaml` are included. Point health checks at
+`/api/health`, which returns 503 when the database is unreachable.
+
+Put the app behind HTTPS; the session cookie upgrades to `Secure` automatically
+when it sees `X-Forwarded-Proto: https`.
 
 ## Admin
 

@@ -10,7 +10,7 @@ import { join, extname, normalize } from 'node:path';
 import {
   createRegistration, stats, allRegistrations, listRegistrations,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
-  verifyConnection, STORAGE,
+  verifyConnection, healthCheck, STORAGE,
 } from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
@@ -108,7 +108,24 @@ function broadcast(type, payload) {
   }
 }
 
-const publicStats = () => stats(ALLOWED_EVENTS);   // async
+// Short-lived cache: the public counter and SSE stream are read far more
+// often than they change, and this keeps read load off the database.
+let statsCache = { value: null, at: 0, inflight: null };
+const STATS_TTL_MS = Number(process.env.STATS_TTL_MS || 2000);
+
+async function publicStats(force = false) {
+  const now = Date.now();
+  if (!force && statsCache.value && now - statsCache.at < STATS_TTL_MS) return statsCache.value;
+  if (statsCache.inflight) return statsCache.inflight;      // coalesce concurrent callers
+  statsCache.inflight = stats(ALLOWED_EVENTS)
+    .then(value => { statsCache = { value, at: Date.now(), inflight: null }; return value; })
+    .catch(error => {
+      statsCache.inflight = null;
+      if (statsCache.value) return statsCache.value;         // serve stale rather than fail
+      throw error;
+    });
+  return statsCache.inflight;
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -162,10 +179,15 @@ const server = http.createServer(async (req, res) => {
   try {
     // ---------- public ----------
     if (req.method === 'GET' && pathname === '/api/health') {
-      const summary = await publicStats();
-      return json(res, 200, {
-        ok: true, service: 'aura-api', storage: STORAGE,
-        registrations: summary.total, realtimeClients: listeners.size,
+      const probe = await healthCheck();
+      let total = null;
+      try { total = (await publicStats()).total; } catch { /* reported via probe */ }
+      return json(res, probe.ok ? 200 : 503, {
+        ok: probe.ok, service: 'aura-api', storage: STORAGE,
+        database: probe.ok ? 'connected' : 'unreachable',
+        databaseLatencyMs: probe.latencyMs ?? null,
+        databaseError: probe.error || undefined,
+        registrations: total, realtimeClients: listeners.size,
         uptimeSeconds: Math.round(process.uptime()),
       });
     }
@@ -204,10 +226,14 @@ const server = http.createServer(async (req, res) => {
       } catch (error) {
         if (error instanceof DuplicateError) return json(res, 409, { error: error.message });
         if (error instanceof CapacityError) return json(res, 409, { error: error.message });
-        throw error;
+        // Database unreachable: tell the student honestly and log for the organiser.
+        console.error('[registration] storage failure:', error.message);
+        return json(res, 503, {
+          error: 'We could not save your registration just now. Please try again in a moment.',
+        });
       }
 
-      const dashboard = await publicStats();
+      const dashboard = await publicStats(true);
       broadcast('registration', { event: registration.event, createdAt: registration.createdAt });
       broadcast('dashboard', dashboard);
       return json(res, 201, { ok: true, registration: { id: registration.id, event: registration.event }, dashboard });
@@ -268,7 +294,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/admin/export') {
-      const rows = await allRegistrations();
+      let rows;
+      try { rows = await allRegistrations(); }
+      catch (error) {
+        console.error('[export] storage failure:', error.message);
+        return json(res, 503, { error: 'Could not read the database for the export. Try again shortly.' });
+      }
       const format = (url.searchParams.get('format') || 'xlsx').toLowerCase();
       if (format === 'csv') {
         res.writeHead(200, {
@@ -310,11 +341,24 @@ server.listen(PORT, HOST, async () => {
       await verifyConnection();
       console.log('Storage: Supabase (permanent cloud database) — connected.');
     } catch (error) {
-      console.error('Storage: Supabase configured but UNREACHABLE:', error.message);
-      console.error('Check SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY, and that supabase-schema.sql has been run.');
+      console.error('');
+      console.error('  Supabase is configured but UNREACHABLE:');
+      console.error(`  ${error.message}`);
+      console.error('');
+      console.error('  Checklist:');
+      console.error('   1. supabase-schema.sql has been run in the SQL Editor');
+      console.error('   2. SUPABASE_URL is the Project URL (https://<ref>.supabase.co)');
+      console.error('   3. SUPABASE_SERVICE_ROLE_KEY is the service_role secret, not the publishable key');
+      console.error('   4. The project is not paused in the Supabase dashboard');
+      console.error('');
+      if (process.env.NODE_ENV === 'production' || process.env.REQUIRE_SUPABASE === 'true') {
+        console.error('  Refusing to serve in production without a working database.');
+        process.exit(1);
+      }
+      console.error('  Continuing anyway because this is not production.');
     }
   } else {
-    console.log('Storage: local SQLite file (data/aura.db).');
+    console.log('Storage: local SQLite file (data/aura.db) — DEVELOPMENT ONLY, not persistent.');
   }
   console.log(`Aura API running on http://${HOST}:${PORT}`);
 });
