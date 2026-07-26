@@ -4,15 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n web,api -c cyan,green \"vite\" \"node --env-file-if-exists=.env --watch server.js\"",
     "api": "node --env-file-if-exists=.env server.js",
-    "mcp": "node mcp-server/index.js",
+    "mcp": "node --env-file-if-exists=.env mcp-server/index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node --env-file-if-exists=.env server.js",
+    "export": "node --env-file-if-exists=.env scripts/export.js",
+    "test": "node --test test/**/*.test.js",
+    "check-db": "node --env-file-if-exists=.env scripts/check-db.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.8",
     "gsap": "^3.15.0",
     "three": "^0.165.0",
     "troika-three-text": "^0.52.5"
@@ -25,5 +27,8 @@
   "main": "server.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "engines": {
+    "node": ">=22.5.0"
+  }
 }

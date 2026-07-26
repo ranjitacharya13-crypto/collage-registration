@@ -7,3 +7,200 @@
 .event-detail{position:absolute;top:calc(50% + clamp(54px,11vw,98px));left:20px;right:20px;text-align:center;white-space:pre-line;color:#dcecff;font:11px/1.55 'DM Mono';letter-spacing:.1em;text-shadow:0 0 12px #00e5ff88;opacity:0;transition:opacity .25s ease}.event-detail.visible{opacity:1}
 .creative-register{position:absolute;left:50%;top:50%;z-index:4;isolation:isolate;display:grid;place-items:center;min-width:min(86vw,430px);padding:25px 34px;color:#eafdff;text-align:center;text-decoration:none;border:1px solid #00e5ff;border-radius:4px;background:linear-gradient(105deg,#071827e8,#151032e8);box-shadow:inset 0 0 28px #00e5ff18,0 0 16px #00e5ff88,0 0 42px #ff2e9f44;opacity:0;pointer-events:none;clip-path:polygon(0 0,calc(100% - 19px) 0,100% 19px,100% 100%,19px 100%,0 calc(100% - 19px));transform:translate(-50%,calc(-50% + 18px));transition:opacity .3s ease,transform .3s ease,background .24s ease,color .24s ease,box-shadow .24s ease}.creative-register::before,.creative-register::after{content:'';position:absolute;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,#00e5ff,#ff2e9f,transparent);opacity:.75}.creative-register::before{top:7px}.creative-register::after{bottom:7px}.creative-register.visible{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}.creative-register:hover,.creative-register:focus-visible{color:#fff;background:linear-gradient(105deg,#08324b,#34113e);box-shadow:inset 0 0 32px #00e5ff33,0 0 23px #00e5ff,0 0 60px #ff2e9f88;outline:none}.creative-register:active{transform:translate(-50%,-50%) scale(.98)}.creative-register span{position:relative;z-index:2;font:700 clamp(20px,6vw,34px)/1 'Syncopate';letter-spacing:-.07em;text-shadow:2px 0 #ff2e9f,-2px 0 #00e5ff}.creative-register span b{font-family:'Space Grotesk';font-weight:400;margin-left:6px}.wave{position:absolute;z-index:-1;left:50%;top:50%;width:100%;height:100%;border:1px solid #51eaff;border-radius:3px;opacity:0;transform:translate(-50%,-50%) scale(.75);pointer-events:none}.creative-register.launching{color:#fff;background:#1436c9;pointer-events:none}.creative-register.launching .wave{animation:ultrasonic .72s cubic-bezier(.15,.7,.2,1) forwards}.creative-register.launching .wave-two{animation-delay:.11s}.creative-register.launching .wave-three{animation-delay:.22s}@keyframes ultrasonic{0%{opacity:.9;transform:translate(-50%,-50%) scale(.8)}100%{opacity:0;transform:translate(-50%,-50%) scale(4.5)}}
 :root{--ink:#060817;--cyan:#00e5ff;--pink:#ff2e9f;--paper:#edf5ff}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);font-family:'Space Grotesk',sans-serif}#scene,.grain{position:fixed;inset:0;width:100%;height:100%;touch-action:none}.grain{pointer-events:none;z-index:2;opacity:.16;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E")}.ui{position:fixed;inset:0;z-index:3;pointer-events:none;padding:max(22px,env(safe-area-inset-top)) 23px max(18px,env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between}header,footer{display:flex;justify-content:space-between;align-items:flex-start;font:10px/1.3 'DM Mono';letter-spacing:.12em}header span,footer span:last-child{color:#b5c3db;text-align:right}.brand{pointer-events:auto;color:#fff;font:700 14px 'Syncopate';text-decoration:none;letter-spacing:.12em}.brand i{color:var(--cyan);font-style:normal}.intro{position:absolute;text-align:center;left:50%;top:48%;transform:translate(-50%,-50%);width:min(92vw,500px);transition:.7s ease}.intro.is-hidden{opacity:0;transform:translate(-50%,-58%)}.eyebrow{font:10px 'DM Mono';letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);margin:0 0 15px}.intro h1,.choice h2,.panel h2{font:700 clamp(46px,14vw,100px)/.85 'Syncopate';letter-spacing:-.06em;margin:0}.intro h1 em{font-style:normal;color:var(--cyan)}.intro>p:not(.eyebrow){font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#c2cde3;margin:19px 0 38px}.swipe{font:10px 'DM Mono';letter-spacing:.15em;text-transform:uppercase;color:#cad5e9}.swipe b{display:block;color:var(--cyan);font:24px sans-serif;margin-top:8px;animation:float 1.5s infinite alternate}.progress{position:absolute;right:10px;top:35%;height:30vh;width:2px;background:#ffffff1a}.progress span{display:block;width:100%;height:0;background:linear-gradient(var(--cyan),var(--pink));box-shadow:0 0 10px var(--cyan)}footer{align-items:end}.choice,.panel{position:fixed;z-index:5;inset:0;background:#060817ed;backdrop-filter:blur(15px);padding:clamp(28px,6vw,76px);overflow:auto;opacity:0;pointer-events:none;transition:.5s ease}.choice{display:flex;flex-direction:column;justify-content:center}.choice.show{opacity:1;pointer-events:auto}.choice h2{font-size:clamp(40px,9vw,86px)}.route-grid,.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:35px;max-width:760px}.route,article{padding:22px;border:1px solid #ffffff20;background:#ffffff08;text-decoration:none;color:inherit;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}.route small,article span{font:10px 'DM Mono';letter-spacing:.11em}.route strong{font:700 clamp(16px,3vw,28px) 'Syncopate'}.route span,article p{font-size:12px;color:#b5c3db;margin:0}.cyan{border-color:#00e5ff88}.pink{border-color:#ff2e9f88}.panel:target{opacity:1;pointer-events:auto}.panel h2{font-size:clamp(36px,7vw,76px)}.back{color:var(--paper);display:inline-block;margin-bottom:45px;font:11px 'DM Mono';text-decoration:none}.technical{background:#050a1bf2}.creative{background:#170716f2}.cards{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));max-width:950px}.cards article{min-height:210px}.cards h3{font:600 22px/1.05 'Space Grotesk';margin:0}.register{color:var(--cyan);font:11px 'DM Mono';letter-spacing:.05em;text-decoration:none}@keyframes float{to{transform:translateY(7px)}}@media(max-width:560px){.route-grid{grid-template-columns:1fr}.route{min-height:125px}.cards{grid-template-columns:1fr;margin-top:26px}.panel{padding:28px 22px}.intro h1{font-size:55px}.choice h2{font-size:42px}}
+
+/* ---------- Day / date badge in the heads-up display ---------- */
+.day-badge{position:fixed;top:clamp(78px,13vh,120px);left:50%;transform:translateX(-50%) translateY(-8px);z-index:5;padding:7px 16px;border:1px solid #00e5ff55;border-radius:999px;background:#060817cc;color:#9fe8ff;font:600 11px 'DM Mono';letter-spacing:.18em;white-space:nowrap;opacity:0;transition:opacity .45s ease,transform .45s ease;pointer-events:none;backdrop-filter:blur(6px)}
+.day-badge.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+
+
+/* ---------- Schedule panel: Day 1 / Day 2 ---------- */
+.schedule{background:#050a1bf7}
+.day-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:clamp(18px,3vw,34px);max-width:1000px;margin-top:26px}
+.day-card{padding:22px 20px;border:1px solid #ffffff1f;background:#0a1120cc}
+.day-card:first-child{border-top:2px solid var(--cyan)}
+.day-card:last-child{border-top:2px solid var(--pink)}
+.day-head{display:flex;flex-direction:column;gap:4px;padding-bottom:14px;margin-bottom:16px;border-bottom:1px dashed #ffffff26}
+.day-label{font:700 13px 'Syncopate';letter-spacing:.2em;color:#fff}
+.day-date{font:700 clamp(26px,5vw,38px)/1 'Space Grotesk';color:var(--cyan)}
+.day-card:last-child .day-date{color:var(--pink)}
+.day-weekday{font:11px 'DM Mono';letter-spacing:.08em;color:#8fa3bd}
+.day-slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.slot{display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:start}
+.slot time{font:11px 'DM Mono';letter-spacing:.02em;color:#7fd8ef;padding-top:3px}
+.slot-body h4{margin:0 0 3px;font:600 15px/1.25 'Space Grotesk';color:#edf5ff}
+.slot-venue{margin:0;font:11px 'DM Mono';letter-spacing:.06em;color:#9db1c9}
+.slot-meta{margin:4px 0 0;font:11px/1.45 'DM Mono';color:#7e91a8}
+.slot-break time,.slot-break .slot-body h4{color:#8c9bb4}
+.slot-ceremony .slot-body h4{color:#ffd66b}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:24px;font:10px 'DM Mono';letter-spacing:.12em;color:#8fa3bd}
+.schedule-cta{display:inline-block;margin-top:20px;padding:13px 20px;background:var(--cyan);color:#06101d;font:700 11px 'DM Mono';letter-spacing:.12em;text-decoration:none}
+.route.amber{border-color:#ffd66b55}
+.route.amber strong{color:#ffd66b}
+
+/* ---------- Richer registration cards + form context ---------- */
+.card-when{margin:0 0 6px;font:11px/1.55 'DM Mono';letter-spacing:.04em;color:#9fe8ff}
+.card-when b{color:#fff;letter-spacing:.12em}
+.card-rules{margin:0 0 10px;font:11px/1.5 'DM Mono';color:#8397ad}
+.form-when{margin:-16px 0 20px;font:11px 'DM Mono';letter-spacing:.1em;color:#7fd8ef}
+
+@media(max-width:560px){
+  .day-grid{grid-template-columns:1fr;gap:16px}
+  .slot{grid-template-columns:88px 1fr;gap:10px}
+  .day-badge{font-size:10px;letter-spacing:.12em;padding:6px 12px}
+  }
+/* Three routes now (Technical / Non-technical / Schedule) - let them flow. */
+.route-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));max-width:900px}
+/* ---------- Grouped participant fields in the registration form ---------- */
+.field-group-title{margin:24px 0 2px;padding-top:14px;border-top:1px solid #ffffff1a;font:700 11px 'DM Mono';letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
+.field-group-title small{font-weight:400;letter-spacing:.08em;text-transform:none;color:#8fa3bd}
+#team-fields[hidden],#partner-fields[hidden],#choice-field[hidden],#contact-title[hidden]{display:none}
+#choice-field select{display:block;width:100%;margin-top:7px;padding:14px;color:#fff;background:#ffffff0a;border:1px solid #ffffff25;font:16px 'Space Grotesk'}
+#choice-field label{display:block;margin:14px 0;font:11px 'DM Mono';letter-spacing:.1em;color:#b9c8db}
+/* ---------- Admin dashboard ---------- */
+.dash-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.dash-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dash-actions button{margin:0;padding:11px 15px;font:700 10px 'DM Mono';letter-spacing:.1em;cursor:pointer;border:0;background:var(--cyan);color:#06101d}
+.dash-actions .ghost{background:transparent;border:1px solid #ffffff33;color:#c8d6e8}
+.dash-actions .ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+.dash-actions .close-dashboard{position:static;background:transparent;border:1px solid #ffffff33;color:#c8d6e8;font-size:17px;line-height:1;padding:8px 13px}
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:9px;margin:20px 0}
+.stat{padding:12px 14px;border:1px solid #ffffff1a;background:#ffffff07}
+.stat b{display:block;font:700 24px 'Space Grotesk';color:var(--cyan)}
+.stat span{font:9px 'DM Mono';letter-spacing:.11em;text-transform:uppercase;color:#93a6bd}
+.dash-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+#dash-search{flex:1;min-width:210px;padding:12px 14px;color:#fff;background:#ffffff0a;border:1px solid #ffffff25;font:14px 'Space Grotesk'}
+#dash-search:focus{outline:0;border-color:var(--cyan)}
+.dash-live{display:flex;align-items:center;gap:7px;font:10px 'DM Mono';letter-spacing:.1em;color:#9db1c9;white-space:nowrap}
+.dash-count{font:10px 'DM Mono';letter-spacing:.1em;color:#7fd8ef;white-space:nowrap}
+.table-wrap{overflow:auto;max-height:56vh;border:1px solid #ffffff1a}
+.table-wrap table{width:100%;border-collapse:collapse;font:12px 'DM Mono'}
+.table-wrap th{position:sticky;top:0;z-index:1;background:#12283f;color:#eaf3ff;text-align:left;padding:11px 10px;font-weight:700;letter-spacing:.06em;white-space:nowrap}
+.table-wrap td{padding:9px 10px;border-top:1px solid #ffffff12;color:#d3e0f0;white-space:nowrap}
+.table-wrap tbody tr:nth-child(even){background:#ffffff05}
+.table-wrap tbody tr:hover{background:#00e5ff0f}
+.table-wrap td.empty{text-align:center;padding:28px;color:#8fa3bd;white-space:normal}
+.dash-pager{display:flex;align-items:center;gap:14px;margin-top:14px;font:10px 'DM Mono';letter-spacing:.1em;color:#9db1c9}
+.dash-pager button{padding:9px 14px;border:1px solid #ffffff2a;background:transparent;color:#c8d6e8;font:10px 'DM Mono';letter-spacing:.1em;cursor:pointer}
+.dash-pager button:disabled{opacity:.35;cursor:not-allowed}
+.submit-register:disabled{opacity:.55;cursor:progress}
+@media(max-width:560px){
+  .dash-head h2{font-size:34px}
+  .table-wrap{max-height:48vh}
+  .dash-actions button{padding:9px 11px;font-size:9px}
+}
+#form-status{margin-top:14px;font:11px/1.5 'DM Mono';letter-spacing:.05em;min-height:16px}
+#form-status.ok{color:#5ef2a8}
+#form-status.error{color:#ff7a9c}
+
+/* ---------- Admin gate: fix heading overflow and close button ---------- */
+/* The shared heading rule sizes with 8vw, which overflows the fixed-width
+   admin window on wide screens. Size it to the panel instead. */
+.admin-window h2{
+  font:700 clamp(22px,4.2vw,34px)/1.05 'Syncopate';
+  margin:0 0 20px;
+  padding-right:44px;              /* keep clear of the close button */
+  overflow-wrap:break-word;
+  word-break:normal;
+  hyphens:none;
+}
+.admin-window .eyebrow{margin:0 0 10px;padding-right:44px}
+.admin-window{
+  position:relative;
+  width:min(100%,460px);
+  max-width:calc(100vw - 32px);
+  padding:26px 24px 28px;
+  border-radius:2px;
+}
+.close-admin{
+  position:absolute;right:12px;top:12px;
+  width:34px;height:34px;
+  display:grid;place-items:center;
+  padding:0;margin:0;
+  border:1px solid #ffffff26;border-radius:50%;
+  background:transparent;color:#cfe0f2;
+  font:400 20px/1 'Space Grotesk';cursor:pointer;
+  transition:background .2s,color .2s,border-color .2s;
+}
+.close-admin:hover{background:var(--cyan);color:#06101d;border-color:var(--cyan)}
+.admin-window input{margin-top:0;margin-bottom:12px}
+.admin-window form{margin:0}
+.admin-window button[type=submit],.admin-window form button{width:100%;margin-top:6px}
+#admin-status{margin:14px 0 0;font:11px/1.5 'DM Mono';letter-spacing:.05em;color:#9fe8ff;min-height:16px}
+
+@media(max-width:560px){
+  .admin-window h2{font-size:clamp(20px,7vw,28px);padding-right:40px}
+  .admin-window{padding:22px 18px 24px}
+}
+
+/* ---------- Dropdown options ---------- */
+/* The select itself is styled white-on-dark, but the popup list is drawn by
+   the OS and inherited white text on a white background, making the choices
+   invisible. Set explicit colours on the options themselves. */
+select option,
+select optgroup{
+  background-color:#0d1a2b;
+  color:#edf5ff;
+  font:15px 'Space Grotesk',sans-serif;
+  padding:10px 12px;
+}
+select option:checked,
+select option:hover{
+  background-color:#00e5ff;
+  color:#06101d;
+}
+select option[disabled]{color:#7386a0}
+/* Placeholder row reads as muted until a real choice is made. */
+select option[value=""]{color:#93a6bd}
+/* Native arrow, sized and coloured to match the dark UI. */
+.form-panel select,
+#choice-field select,
+.admin-window select{
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:16px;
+  padding-right:42px;
+  cursor:pointer;
+}
+.form-panel select:focus,
+#choice-field select:focus,
+.admin-window select:focus{outline:0;border-color:var(--cyan)}
+/* Firefox keeps a dotted focus ring on the selected text. */
+select:-moz-focusring{color:transparent;text-shadow:0 0 0 #edf5ff}
+
+/* ---------- Title cards in the heads-up display ---------- */
+/* The opening titles use the same big glowing treatment as the event names,
+   with an accent colour per card. */
+.event-name[data-tone="ice"]{text-shadow:0 0 12px #9fe8ff,0 0 34px #9fe8ff88}
+.event-name[data-tone="amber"]{text-shadow:0 0 12px #ffd66b,0 0 34px #ffd66b88}
+.event-name[data-tone="cyan"]{text-shadow:0 0 12px #00e5ff,0 0 32px #00e5ff88}
+.event-detail[data-tone="ice"]{color:#e8f6ff;text-shadow:0 0 12px #9fe8ff88}
+.event-detail[data-tone="amber"]{color:#ffeec4;text-shadow:0 0 12px #ffd66b88}
+.event-detail[data-tone="cyan"]{color:#dcecff;text-shadow:0 0 12px #00e5ff88}
+/* "DEPARTMENT OF CSE" is long: let it wrap and shrink rather than overflow. */
+.event-name.is-title{
+  font-size:clamp(26px,7.5vw,66px);
+  letter-spacing:-.04em;
+  overflow-wrap:break-word;
+  text-wrap:balance;
+}
+.event-detail{letter-spacing:.16em}
+
+/* ---------- Title-card subtitle ---------- */
+/* On the opening cards the second line is part of the title lock-up, so it
+   uses the same display face and neon glow as the heading rather than the
+   small mono caption style used for event details. */
+.event-detail.is-title{
+  top:calc(50% + clamp(46px,9.5vw,86px));
+  font:700 clamp(14px,3.4vw,30px)/1.15 'Syncopate';
+  letter-spacing:.04em;
+  color:#fff;
+  white-space:normal;
+  overflow-wrap:break-word;
+  text-wrap:balance;
+}
+.event-detail.is-title[data-tone="ice"]{text-shadow:0 0 10px #9fe8ff,0 0 26px #9fe8ff88}
+.event-detail.is-title[data-tone="amber"]{text-shadow:0 0 10px #ffd66b,0 0 26px #ffd66b88}
+.event-detail.is-title[data-tone="cyan"]{text-shadow:0 0 10px #00e5ff,0 0 26px #00e5ff88}
