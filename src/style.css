@@ -95,3 +95,43 @@
 #form-status{margin-top:14px;font:11px/1.5 'DM Mono';letter-spacing:.05em;min-height:16px}
 #form-status.ok{color:#5ef2a8}
 #form-status.error{color:#ff7a9c}
+
+/* ---------- Admin gate: fix heading overflow and close button ---------- */
+/* The shared heading rule sizes with 8vw, which overflows the fixed-width
+   admin window on wide screens. Size it to the panel instead. */
+.admin-window h2{
+  font:700 clamp(22px,4.2vw,34px)/1.05 'Syncopate';
+  margin:0 0 20px;
+  padding-right:44px;              /* keep clear of the close button */
+  overflow-wrap:break-word;
+  word-break:normal;
+  hyphens:none;
+}
+.admin-window .eyebrow{margin:0 0 10px;padding-right:44px}
+.admin-window{
+  position:relative;
+  width:min(100%,460px);
+  max-width:calc(100vw - 32px);
+  padding:26px 24px 28px;
+  border-radius:2px;
+}
+.close-admin{
+  position:absolute;right:12px;top:12px;
+  width:34px;height:34px;
+  display:grid;place-items:center;
+  padding:0;margin:0;
+  border:1px solid #ffffff26;border-radius:50%;
+  background:transparent;color:#cfe0f2;
+  font:400 20px/1 'Space Grotesk';cursor:pointer;
+  transition:background .2s,color .2s,border-color .2s;
+}
+.close-admin:hover{background:var(--cyan);color:#06101d;border-color:var(--cyan)}
+.admin-window input{margin-top:0;margin-bottom:12px}
+.admin-window form{margin:0}
+.admin-window button[type=submit],.admin-window form button{width:100%;margin-top:6px}
+#admin-status{margin:14px 0 0;font:11px/1.5 'DM Mono';letter-spacing:.05em;color:#9fe8ff;min-height:16px}
+
+@media(max-width:560px){
+  .admin-window h2{font-size:clamp(20px,7vw,28px);padding-right:40px}
+  .admin-window{padding:22px 18px 24px}
+}
