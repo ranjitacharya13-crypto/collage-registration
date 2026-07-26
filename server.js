@@ -1,4 +1,4 @@
-﻿// AURA 2026 registration API.
+// AURA 2026 registration API.
 //
 // Design goals: never lose a registration, never accept a duplicate, never
 // crash the process, and stay responsive for both students and organisers.
@@ -11,7 +11,7 @@ import {
   createRegistration, stats, allRegistrations, listRegistrations,
   yearThreeRemaining as readYearThreeRemaining,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
-  verifyConnection, healthCheck, STORAGE, configError,
+  verifyConnection, healthCheck, STORAGE, configError, configWarning, urlInfo,
 } from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS, YEAR_THREE_LIMIT } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
@@ -100,6 +100,13 @@ function broadcast(type, payload) {
     try { res.write(frame); } catch { listeners.delete(res); }
   }
 }
+
+/** Zeroed counts, used when the database cannot be read. */
+const emptyStats = () => ({
+  total: 0, teams: 0,
+  byEvent: Object.fromEntries(ALLOWED_EVENTS.map(event => [event, 0])),
+  updatedAt: new Date().toISOString(),
+});
 
 // Short-lived cache: the public counter and SSE stream are read far more
 // often than they change, and this keeps read load off the database.
@@ -194,6 +201,8 @@ export async function handler(req, res) {
       return json(res, probe.ok ? 200 : 503, {
         ok: probe.ok, service: 'aura-api', storage: STORAGE,
         configError: configError || undefined,
+        configWarning: configWarning || undefined,
+        databaseUrl: urlInfo?.url || undefined,
         database: probe.ok ? 'connected' : 'unreachable',
         databaseLatencyMs: probe.latencyMs ?? null,
         databaseError: probe.error || undefined,
@@ -203,9 +212,25 @@ export async function handler(req, res) {
     }
 
     if (req.method === 'GET' && pathname === '/api/events') {
-      const summary = await publicStats();
+      // The public counter must never take the page down with it. If the
+      // database cannot be read, answer with zeroed counts and a flag rather
+      // than a 500, so the site still renders and registration stays open.
+      let summary;
+      let degraded = false;
+      try {
+        summary = await publicStats();
+      } catch (error) {
+        console.error('[events] storage failure:', error.message);
+        summary = emptyStats();
+        degraded = true;
+      }
       const yearThree = await yearThreeRemaining();
-      const body = { ...summary, yearThreeLimit: YEAR_THREE_LIMIT, yearThreeRemaining: yearThree };
+      const body = {
+        ...summary,
+        yearThreeLimit: YEAR_THREE_LIMIT,
+        yearThreeRemaining: yearThree,
+        ...(degraded ? { degraded: true } : {}),
+      };
       return json(res, 200, TOTAL_CAPACITY
         ? { ...body, capacity: TOTAL_CAPACITY, remaining: Math.max(0, TOTAL_CAPACITY - summary.total) }
         : body);
@@ -214,14 +239,15 @@ export async function handler(req, res) {
     if (req.method === 'GET' && pathname === '/api/live') {
       // Serverless functions cannot hold a stream open, and the dashboard
       // polls anyway, so answer with a single snapshot instead of hanging.
+      const snapshot = await publicStats().catch(() => emptyStats());
       if (isServerless) {
-        return json(res, 200, { ...(await publicStats()), streaming: false });
+        return json(res, 200, { ...snapshot, streaming: false });
       }
       res.writeHead(200, {
         'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform',
         Connection: 'keep-alive', 'X-Accel-Buffering': 'no',
       });
-      res.write(`event: dashboard\ndata: ${JSON.stringify(await publicStats())}\n\n`);
+      res.write(`event: dashboard\ndata: ${JSON.stringify(snapshot)}\n\n`);
       listeners.add(res);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch { /* closed */ } }, 25_000);
       const drop = () => { clearInterval(ping); listeners.delete(res); };
@@ -250,7 +276,9 @@ export async function handler(req, res) {
         });
       }
 
-      const dashboard = await publicStats(true);
+      // The row is already committed; a failed stats refresh must not turn a
+      // successful registration into an error for the student.
+      const dashboard = await publicStats(true).catch(() => emptyStats());
       broadcast('registration', { event: registration.event, createdAt: registration.createdAt });
       broadcast('dashboard', dashboard);
       return json(res, 201, { ok: true, registration: { id: registration.id, event: registration.event }, dashboard });
@@ -353,9 +381,14 @@ server.keepAliveTimeout = 65_000;
 if (!isServerless) server.listen(PORT, HOST, async () => {
   if (legacyImported) console.log(`Imported ${legacyImported} registration(s) from the old JSON file.`);
   if (STORAGE === 'supabase') {
+    if (configWarning) {
+      console.warn('');
+      console.warn(`  [config] ${configWarning}`);
+      console.warn('');
+    }
     try {
       await verifyConnection();
-      console.log('Storage: Supabase (permanent cloud database) â€” connected.');
+      console.log(`Storage: Supabase (permanent cloud database) — connected (${urlInfo?.url || ''}).`);
     } catch (error) {
       console.error('');
       console.error('  Supabase is configured but UNREACHABLE:');
@@ -374,7 +407,7 @@ if (!isServerless) server.listen(PORT, HOST, async () => {
       console.error('  Continuing anyway because this is not production.');
     }
   } else {
-    console.log('Storage: local SQLite file (data/aura.db) â€” DEVELOPMENT ONLY, not persistent.');
+    console.log('Storage: local SQLite file (data/aura.db) — DEVELOPMENT ONLY, not persistent.');
   }
   console.log(`Aura API running on http://${HOST}:${PORT}`);
 });

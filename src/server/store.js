@@ -6,6 +6,8 @@
 // Both modules export the same interface, so nothing else in the codebase
 // needs to know which one is in use.
 
+import { resolveSupabaseUrl, redactSecrets } from './supabase-url.js';
+
 const hasSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
@@ -44,16 +46,23 @@ if (!hasSupabase && isProduction && !allowLocalFallback) {
 `);
 }
 
+// Surfaced on /api/health as a warning: the site still works, but somebody
+// should tidy up the configuration.
+export let configWarning = null;
+
 if (hasSupabase) {
-  const url = process.env.SUPABASE_URL.trim()
-    .replace(/\/+$/, '').replace(/\/rest\/v1$/i, '').replace(/\/+$/, '');
-  if (/^postgres(ql)?:\/\//i.test(url)) {
-    fail('SUPABASE_URL is a database connection string, not the API URL. Use https://<project-ref>.supabase.co');
+  const resolved = resolveSupabaseUrl(process.env.SUPABASE_URL);
+
+  // Only give up when nothing usable could be derived. A connection string or
+  // a db.<ref> host still contains the project ref, so we correct it and carry
+  // on rather than taking the whole site down over a copy-paste slip.
+  if (resolved.error) {
+    fail(resolved.error);
+  } else if (resolved.warning) {
+    configWarning = resolved.warning;
+    console.warn(`[storage] ${redactSecrets(resolved.warning)}`);
   }
-  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url)) {
-    console.warn(`[storage] SUPABASE_URL does not look like a project URL: ${url}`);
-    console.warn('[storage] Expected https://<project-ref>.supabase.co — not the database connection string.');
-  }
+
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY.trim();
   // The publishable/anon key cannot write past RLS, so catch that mix-up early.
   if (key.startsWith('sb_publishable_') || key.startsWith('sbp_')) {
@@ -74,3 +83,6 @@ export const {
 
 export const verifyConnection = backend.verifyConnection || (async () => {});
 export const healthCheck = backend.healthCheck || (async () => ({ ok: true }));
+
+/** How SUPABASE_URL was interpreted, for start-up logging and /api/health. */
+export const urlInfo = backend.urlInfo || null;

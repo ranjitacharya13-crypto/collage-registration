@@ -7,13 +7,13 @@
 // server and never reaches the browser. Writes retry with exponential backoff
 // so a transient network blip does not lose a student's registration.
 
-// Accept the plain project URL, and also tolerate someone pasting the Data API
-// endpoint (…/rest/v1/) that the dashboard shows.
-const URL_BASE = (process.env.SUPABASE_URL || '')
-  .trim()
-  .replace(/\/+$/, '')
-  .replace(/\/rest\/v1$/i, '')
-  .replace(/\/+$/, '');
+// Accept the plain project URL, and also tolerate the other strings the
+// dashboard shows: the Data API endpoint (…/rest/v1/), the database host, and
+// the Postgres connection string. See supabase-url.js.
+import { resolveSupabaseUrl, redactSecrets } from './supabase-url.js';
+
+const RESOLVED = resolveSupabaseUrl(process.env.SUPABASE_URL);
+const URL_BASE = RESOLVED.url;
 const SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const TABLE = 'registrations';
 const REQUEST_TIMEOUT_MS = Number(process.env.SUPABASE_TIMEOUT_MS || 12_000);
@@ -55,7 +55,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /** A duplicate or rule violation must never be retried — it will never succeed. */
 function classify(status, parsed, text) {
-  const message = parsed.message || parsed.hint || text || '';
+  const message = redactSecrets(parsed.message || parsed.hint || text || '');
   if (parsed.code === '23505' || /duplicate key|uniq_event_/i.test(message)) {
     return new DuplicateError('This email or phone number is already registered for that event.');
   }
@@ -111,8 +111,8 @@ async function request(path, options = {}) {
     }
     await sleep(Math.min(2000, 200 * 2 ** attempt) + Math.random() * 100);
   }
-  throw new StorageUnavailableError(
-    `Could not reach the database after ${MAX_RETRIES + 1} attempts: ${lastError?.message || 'unknown error'}`);
+  throw new StorageUnavailableError(redactSecrets(
+    `Could not reach the database after ${MAX_RETRIES + 1} attempts: ${lastError?.message || 'unknown error'}`));
 }
 
 const fromRow = row => row && ({
@@ -196,7 +196,7 @@ export async function listRegistrations({ page = 1, pageSize = 50, query = '' } 
       headers: { ...headers, Prefer: 'count=exact' },
       signal: controller.signal,
     });
-    if (!response.ok) throw new StorageUnavailableError(await response.text());
+    if (!response.ok) throw new StorageUnavailableError(redactSecrets(await response.text()));
     const rows = (await response.json()).map(fromRow);
     const total = Number((response.headers.get('content-range') || '').split('/')[1] || rows.length);
     return { rows, total, page: current, pageSize: size, pages: Math.max(1, Math.ceil(total / size)) };
@@ -215,7 +215,7 @@ async function countRows(path) {
       headers: { ...headers, Prefer: 'count=exact' },
       signal: controller.signal,
     });
-    if (!response.ok) throw new StorageUnavailableError(await response.text());
+    if (!response.ok) throw new StorageUnavailableError(redactSecrets(await response.text()));
     return Number((response.headers.get('content-range') || '').split('/')[1] || 0);
   } finally {
     clearTimeout(timer);
@@ -236,7 +236,17 @@ export async function yearThreeRemaining(limits = {}) {
   return out;
 }
 
+/** How SUPABASE_URL was interpreted, for start-up logging and /api/health. */
+export const urlInfo = {
+  url: URL_BASE,
+  ref: RESOLVED.ref,
+  derivedFrom: RESOLVED.derivedFrom,
+  warning: RESOLVED.warning,
+  error: RESOLVED.error,
+};
+
 export async function verifyConnection() {
+  if (RESOLVED.error) throw new StorageUnavailableError(RESOLVED.error);
   if (!URL_BASE) throw new StorageUnavailableError('SUPABASE_URL is empty.');
   if (!SERVICE_KEY) throw new StorageUnavailableError('SUPABASE_SERVICE_ROLE_KEY is empty.');
   await request('/rest/v1/rpc/registration_stats', { method: 'POST', body: '{}' });
