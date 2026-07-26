@@ -16,15 +16,12 @@ export const DAYS = [
     weekday: 'Thursday',
     dateLong: '30 July 2026',
     items: [
-      { name: 'Opening Address', time: '10:20 AM — 10:50 AM', venue: 'Main Auditorium', kind: 'ceremony' },
       { name: 'Flush the Brain', time: '11:30 AM — 12:30 PM', venue: 'Visa Hall', kind: 'event',
         category: 'non-technical', team: '15 teams of 2', teamSize: 2, rules: '3-image clues · No phones allowed' },
       { name: 'Treasure Hunt', time: '11:30 AM — 12:30 PM', venue: 'Campus & Library', kind: 'event',
         category: 'non-technical', team: 'Team of 2', teamSize: 2, rules: 'R1: find 5 papers · R2: identify article numbers / names' },
-      { name: 'Lunch Break', time: '1:20 PM — 1:50 PM', venue: 'Canteen', kind: 'break' },
       { name: 'Bug Hunt', time: '2:30 PM — 3:15 PM', venue: 'Main Lab', kind: 'event',
         category: 'technical', team: 'Single participant', teamSize: 1, rules: 'Theory (C / Python) + practical debugging' },
-      { name: 'Singing & Dance', time: '2:15 PM — 4:00 PM', venue: 'Main Stage', kind: 'ceremony' },
     ],
   },
   {
@@ -36,7 +33,6 @@ export const DAYS = [
     items: [
       { name: 'Murder Mystery', time: '11:30 AM — 12:45 PM', venue: 'Visa Hall', kind: 'event',
         category: 'non-technical', team: '15 teams of 2', teamSize: 2, rules: 'Projector scenario clues · Find the murderer' },
-      { name: 'Lunch Break', time: '1:20 PM — 1:50 PM', venue: 'Canteen', kind: 'break' },
       { name: 'Debate: Android vs iOS', time: '2:30 PM — 3:30 PM', venue: '3rd Class Room', kind: 'event',
         category: 'technical', team: 'Team of 2', teamSize: 2, rules: 'Android vs iOS · Moderated rounds',
         choice: { label: 'Side you are arguing for', name: 'side', options: ['Android', 'iOS'] } },

@@ -96,6 +96,28 @@ If it says `local SQLite file`, the two variables are not set.
 - **Locked down.** Row Level Security is on with no public policy. Only the
   server's service_role key can read or write.
 
+### Getting `SUPABASE_URL` right
+
+`SUPABASE_URL` must be the **Project URL** from *Project Settings -> API*:
+
+```
+https://<project-ref>.supabase.co
+```
+
+It is **not** the database connection string from *Connect -> URI*
+(`postgresql://postgres:PASSWORD@db.<ref>.supabase.co:5432/postgres`). That one
+is for a Postgres driver and contains your database password.
+
+If a connection string, a `db.<ref>…` host, a bare hostname or a bare project
+ref is supplied, the server now derives the correct API URL, logs a warning and
+keeps serving — instead of failing every request. `/api/health` shows the
+warning under `configWarning` and the URL actually in use under `databaseUrl`.
+Secrets are stripped from every error message, so the password is never echoed
+back.
+
+> If your password was ever stored in `SUPABASE_URL`, rotate it:
+> *Project Settings -> Database -> Reset database password*.
+
 ### If the database goes down
 
 The site stays up. Registrations return a clear "please try again in a moment"

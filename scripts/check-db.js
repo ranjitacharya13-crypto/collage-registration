@@ -8,8 +8,10 @@ const info = message => console.log(`        ${message}`);
 
 console.log('\nAURA 2026 — database pre-flight check\n');
 
-const url = (process.env.SUPABASE_URL || '').trim()
-  .replace(/\/+$/, '').replace(/\/rest\/v1$/i, '').replace(/\/+$/, '');
+const { resolveSupabaseUrl, redactSecrets } = await import('../src/server/supabase-url.js');
+
+const resolved = resolveSupabaseUrl(process.env.SUPABASE_URL);
+const url = resolved.url;
 const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 let failures = 0;
 
@@ -23,14 +25,18 @@ if (!url || !key) {
 pass('Supabase environment variables are set');
 
 // 2. URL shape
-if (/^postgres(ql)?:\/\//i.test(url)) {
-  fail('SUPABASE_URL is a database connection string, not the API URL');
+if (resolved.error) {
+  fail(redactSecrets(resolved.error));
   info('Use the "Project URL": https://<project-ref>.supabase.co');
   process.exit(1);
 }
-if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url)) {
-  fail(`SUPABASE_URL does not look right: ${url}`);
-  info('Expected https://<project-ref>.supabase.co');
+if (resolved.warning) {
+  fail(redactSecrets(resolved.warning));
+  info(`The API will still work, using ${url}, but please correct SUPABASE_URL.`);
+  if (resolved.derivedFrom === 'connection-string') {
+    info('IMPORTANT: your database password was in SUPABASE_URL. Rotate it:');
+    info('Supabase dashboard -> Project Settings -> Database -> Reset password.');
+  }
   failures += 1;
 } else {
   pass(`Project URL looks valid (${url})`);
