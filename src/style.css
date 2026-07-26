@@ -187,3 +187,20 @@ select:-moz-focusring{color:transparent;text-shadow:0 0 0 #edf5ff}
   text-wrap:balance;
 }
 .event-detail{letter-spacing:.16em}
+
+/* ---------- Title-card subtitle ---------- */
+/* On the opening cards the second line is part of the title lock-up, so it
+   uses the same display face and neon glow as the heading rather than the
+   small mono caption style used for event details. */
+.event-detail.is-title{
+  top:calc(50% + clamp(46px,9.5vw,86px));
+  font:700 clamp(14px,3.4vw,30px)/1.15 'Syncopate';
+  letter-spacing:.04em;
+  color:#fff;
+  white-space:normal;
+  overflow-wrap:break-word;
+  text-wrap:balance;
+}
+.event-detail.is-title[data-tone="ice"]{text-shadow:0 0 10px #9fe8ff,0 0 26px #9fe8ff88}
+.event-detail.is-title[data-tone="amber"]{text-shadow:0 0 10px #ffd66b,0 0 26px #ffd66b88}
+.event-detail.is-title[data-tone="cyan"]{text-shadow:0 0 10px #00e5ff,0 0 26px #00e5ff88}
