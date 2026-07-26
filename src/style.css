@@ -12,9 +12,6 @@
 .day-badge{position:fixed;top:clamp(78px,13vh,120px);left:50%;transform:translateX(-50%) translateY(-8px);z-index:5;padding:7px 16px;border:1px solid #00e5ff55;border-radius:999px;background:#060817cc;color:#9fe8ff;font:600 11px 'DM Mono';letter-spacing:.18em;white-space:nowrap;opacity:0;transition:opacity .45s ease,transform .45s ease;pointer-events:none;backdrop-filter:blur(6px)}
 .day-badge.visible{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ---------- Schedule shortcut ---------- */
-.schedule-link{position:fixed;right:clamp(16px,4vw,42px);bottom:clamp(84px,14vh,130px);z-index:6;padding:10px 16px;border:1px solid #ffd66b66;border-radius:999px;color:#ffd66b;background:#060817b3;font:600 10px 'DM Mono';letter-spacing:.16em;text-decoration:none;backdrop-filter:blur(6px);transition:background .3s,color .3s}
-.schedule-link:hover{background:#ffd66b;color:#0a0d19}
 
 /* ---------- Schedule panel: Day 1 / Day 2 ---------- */
 .schedule{background:#050a1bf7}
@@ -50,8 +47,7 @@
   .day-grid{grid-template-columns:1fr;gap:16px}
   .slot{grid-template-columns:88px 1fr;gap:10px}
   .day-badge{font-size:10px;letter-spacing:.12em;padding:6px 12px}
-  .schedule-link{bottom:76px;padding:9px 13px;font-size:9px}
-}
+  }
 /* Three routes now (Technical / Non-technical / Schedule) - let them flow. */
 .route-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));max-width:900px}
 /* ---------- Grouped participant fields in the registration form ---------- */

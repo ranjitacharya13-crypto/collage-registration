@@ -52,7 +52,6 @@ app.innerHTML = `
     <div id="day-badge" class="day-badge" aria-live="polite"></div>
     <div id="event-name" class="event-name" aria-live="polite"></div>
     <div id="event-detail" class="event-detail"></div>
-    <a id="schedule-link" class="schedule-link" href="#schedule">FULL SCHEDULE ↗</a>
     <a id="creative-register" class="creative-register" href="#registration-hub" aria-label="Open registration hub"><span>REGISTER NOW <b>↗</b></span><i class="wave wave-one"></i><i class="wave wave-two"></i><i class="wave wave-three"></i></a>
     <section id="intro" class="intro"><p class="eyebrow">A cinematic event gallery</p><h1>AURA<br><em>2026</em></h1><p>Sankara Polytechnic College</p><div class="swipe">Swipe to explore <b>↓</b></div></section>
     <aside class="progress"><span id="progress"></span></aside>
