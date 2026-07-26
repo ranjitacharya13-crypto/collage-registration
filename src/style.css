@@ -131,3 +131,41 @@
   .admin-window h2{font-size:clamp(20px,7vw,28px);padding-right:40px}
   .admin-window{padding:22px 18px 24px}
 }
+
+/* ---------- Dropdown options ---------- */
+/* The select itself is styled white-on-dark, but the popup list is drawn by
+   the OS and inherited white text on a white background, making the choices
+   invisible. Set explicit colours on the options themselves. */
+select option,
+select optgroup{
+  background-color:#0d1a2b;
+  color:#edf5ff;
+  font:15px 'Space Grotesk',sans-serif;
+  padding:10px 12px;
+}
+select option:checked,
+select option:hover{
+  background-color:#00e5ff;
+  color:#06101d;
+}
+select option[disabled]{color:#7386a0}
+/* Placeholder row reads as muted until a real choice is made. */
+select option[value=""]{color:#93a6bd}
+/* Native arrow, sized and coloured to match the dark UI. */
+.form-panel select,
+#choice-field select,
+.admin-window select{
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  background-size:16px;
+  padding-right:42px;
+  cursor:pointer;
+}
+.form-panel select:focus,
+#choice-field select:focus,
+.admin-window select:focus{outline:0;border-color:var(--cyan)}
+/* Firefox keeps a dotted focus ring on the selected text. */
+select:-moz-focusring{color:transparent;text-shadow:0 0 0 #edf5ff}
