@@ -206,6 +206,36 @@ export async function listRegistrations({ page = 1, pageSize = 50, query = '' } 
 }
 
 /** Verifies credentials and that the schema has been applied. */
+/** Exact row count via PostgREST's count=exact header. */
+async function countRows(path) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${URL_BASE}${path}&limit=1`, {
+      headers: { ...headers, Prefer: 'count=exact' },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new StorageUnavailableError(await response.text());
+    return Number((response.headers.get('content-range') || '').split('/')[1] || 0);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Year 3 places still available, per event. */
+export async function yearThreeRemaining(limits = {}) {
+  const out = {};
+  for (const [event, cap] of Object.entries(limits)) {
+    const encoded = encodeURIComponent(event);
+    const [asLead, asPartner] = await Promise.all([
+      countRows(`/rest/v1/${TABLE}?select=id&event=eq.${encoded}&year=eq.3`),
+      countRows(`/rest/v1/${TABLE}?select=id&event=eq.${encoded}&partner_year=eq.3`),
+    ]);
+    out[event] = Math.max(0, cap - asLead - asPartner);
+  }
+  return out;
+}
+
 export async function verifyConnection() {
   if (!URL_BASE) throw new StorageUnavailableError('SUPABASE_URL is empty.');
   if (!SERVICE_KEY) throw new StorageUnavailableError('SUPABASE_SERVICE_ROLE_KEY is empty.');

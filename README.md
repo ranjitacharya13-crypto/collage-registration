@@ -89,6 +89,10 @@ If it says `local SQLite file`, the two variables are not set.
   counting, so the last place cannot be given to two people.
 - **Eligibility.** A trigger blocks Year 3 from the non-technical events even if
   the request bypasses the form.
+- **Year 3 places.** Bug Hunt and Debate each allow only five Year 3 students.
+  Counted per person, so a Debate team with two Year 3 members uses two places.
+  Enforced inside the insert with an advisory lock, so the last place cannot be
+  claimed twice.
 - **Locked down.** Row Level Security is on with no public policy. Only the
   server's service_role key can read or write.
 

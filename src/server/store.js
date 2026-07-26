@@ -65,7 +65,7 @@ export const STORAGE = hasSupabase ? 'supabase' : 'sqlite';
 
 export const {
   createRegistration, stats, allRegistrations, listRegistrations,
-  DuplicateError, CapacityError, closeDatabase, legacyImported,
+  yearThreeRemaining, DuplicateError, CapacityError, closeDatabase, legacyImported,
 } = backend;
 
 export const verifyConnection = backend.verifyConnection || (async () => {});

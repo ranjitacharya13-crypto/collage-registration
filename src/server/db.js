@@ -70,6 +70,10 @@ const statements = {
   byEvent: db.prepare('select event, count(*) as count from registrations group by event'),
   teams: db.prepare("select count(*) as count from registrations where team_name is not null and team_name != ''"),
   countForEvent: db.prepare('select count(*) as count from registrations where event = ?'),
+  // Counts people, not rows: a team with two Year 3 members uses two places.
+  yearThreeSeats: db.prepare(`select
+      (select count(*) from registrations where event = ?1 and year = '3')
+    + (select count(*) from registrations where event = ?1 and partner_year = '3') as count`),
   all: db.prepare(`select ${columns} from registrations order by created_at desc`),
   page: db.prepare(`select ${columns} from registrations order by created_at desc limit ? offset ?`),
   search: db.prepare(`select ${columns} from registrations
@@ -170,6 +174,19 @@ export async function createRegistration(value, limits = {}) {
     if (perEvent && statements.countForEvent.get(record.event).count >= perEvent) {
       throw new CapacityError(`${record.event} is full (${perEvent} places).`);
     }
+    const yearThreeCap = limits.yearThree?.[record.event];
+    if (yearThreeCap) {
+      const wanted = (record.year === '3' ? 1 : 0) + (record.partnerYear === '3' ? 1 : 0);
+      if (wanted > 0) {
+        const taken = statements.yearThreeSeats.get(record.event).count;
+        if (taken + wanted > yearThreeCap) {
+          const left = Math.max(0, yearThreeCap - taken);
+          throw new CapacityError(left === 0
+            ? `All ${yearThreeCap} Year 3 places for ${record.event} are filled.`
+            : `Only ${left} Year 3 place${left === 1 ? '' : 's'} left for ${record.event}.`);
+        }
+      }
+    }
     insertRow(record);
     db.exec('commit');
   } catch (error) {
@@ -194,6 +211,15 @@ export async function stats(knownEvents = []) {
 }
 
 export const allRegistrations = async () => statements.all.all();
+
+/** Year 3 places still available, per event. */
+export async function yearThreeRemaining(limits = {}) {
+  const out = {};
+  for (const [event, cap] of Object.entries(limits)) {
+    out[event] = Math.max(0, cap - statements.yearThreeSeats.get(event).count);
+  }
+  return out;
+}
 
 /** Paginated + searchable listing for the admin dashboard. */
 export async function listRegistrations({ page = 1, pageSize = 50, query = '' } = {}) {

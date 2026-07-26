@@ -143,6 +143,13 @@ create trigger registration_year_three_guard
   before insert on public.registrations
   for each row execute function public.enforce_year_three_rule();
 
+-- How many Year 3 places a single submission would consume.
+create or replace function public.new_year_three_seats(payload jsonb)
+returns integer language sql immutable as $$
+  select (case when payload->>'year' = '3' then 1 else 0 end)
+       + (case when payload->>'partnerYear' = '3' then 1 else 0 end);
+$$;
+
 -- 8. Atomic insert with an optional global cap. Counting and inserting in one
 --    call prevents the last place being handed to two people at once.
 create or replace function public.create_registration(payload jsonb, total_capacity integer default 0)
@@ -155,6 +162,22 @@ begin
     perform pg_advisory_xact_lock(hashtext('aura_registration_capacity'));
     if (select count(*) from public.registrations) >= total_capacity then
       raise exception 'Registration is closed. All % places are filled.', total_capacity
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
+  -- Year 3 places are limited for Bug Hunt and Debate. Counted per student, so
+  -- a team with two Year 3 members uses two places. The advisory lock makes the
+  -- count and the insert atomic under simultaneous submissions.
+  if new_year_three_seats(payload) > 0
+     and payload->>'event' in ('Bug Hunt','Debate') then
+    perform pg_advisory_xact_lock(hashtext('aura_year_three_' || (payload->>'event')));
+    if (select count(*) from public.registrations
+          where event = payload->>'event' and year = '3')
+     + (select count(*) from public.registrations
+          where event = payload->>'event' and partner_year = '3')
+     + new_year_three_seats(payload) > 5 then
+      raise exception 'All 5 Year 3 places for % are filled.', payload->>'event'
         using errcode = 'check_violation';
     end if;
   end if;

@@ -8,9 +8,9 @@ const workspace = mkdtempSync(join(tmpdir(), 'aura-test-'));
 process.env.DATA_DIR = workspace;
 process.env.DB_PATH = join(workspace, 'test.db');
 
-const { createRegistration, listRegistrations, allRegistrations, stats, DuplicateError, CapacityError, closeDatabase } =
+const { createRegistration, listRegistrations, allRegistrations, stats, yearThreeRemaining, DuplicateError, CapacityError, closeDatabase } =
   await import('../src/server/db.js');
-const { validateRegistration } = await import('../src/server/validate.js');
+const { validateRegistration, YEAR_THREE_LIMIT } = await import('../src/server/validate.js');
 const { buildXlsx, buildCsv } = await import('../src/server/export.js');
 
 const solo = (over = {}) => ({
@@ -167,5 +167,66 @@ describe('exports', () => {
   test('xlsx escapes xml-unsafe characters', () => {
     const buffer = buildXlsx([{ event: 'Bug Hunt', name: 'A & <b>', department: 'X', year: '1', phone: '1', email: 'e', createdAt: new Date().toISOString() }]);
     assert.ok(buffer.length > 500);
+  });
+});
+
+describe('year 3 slot limit', () => {
+  const y3solo = (i) => validateRegistration({
+    event: 'Bug Hunt', name: `Y3 Solo ${i}`, department: 'CSE', year: '3',
+    phone: `9611100${String(i).padStart(3, '0')}`, email: `y3solo${i}@example.com`,
+  }).value;
+
+  test('allows exactly five Year 3 places for Bug Hunt', async () => {
+    const before = (await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'];
+    assert.equal(before, 5, 'should start with five places');
+
+    for (let i = 0; i < 5; i += 1) {
+      await createRegistration(y3solo(i), { yearThree: YEAR_THREE_LIMIT });
+    }
+    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'], 0);
+
+    await assert.rejects(
+      () => createRegistration(y3solo(99), { yearThree: YEAR_THREE_LIMIT }),
+      error => {
+        assert.equal(error.name, 'CapacityError');
+        assert.match(error.message, /Year 3 places for Bug Hunt are filled/);
+        return true;
+      });
+  });
+
+  test('year 1 and 2 are unaffected once Year 3 is full', async () => {
+    const row = await createRegistration(validateRegistration({
+      event: 'Bug Hunt', name: 'Second Year', department: 'CSE', year: '2',
+      phone: '9622200001', email: 'y2ok@example.com',
+    }).value, { yearThree: YEAR_THREE_LIMIT });
+    assert.ok(row.id);
+  });
+
+  test('a team with two Year 3 members uses two places', async () => {
+    const team = (i) => validateRegistration({
+      event: 'Debate', choice: 'Android', teamName: `Pair ${i}`,
+      name: `Lead ${i}`, department: 'IT', year: '3',
+      partnerName: `Mate ${i}`, partnerDepartment: 'IT', partnerYear: '3',
+      phone: `9633300${String(i).padStart(3, '0')}`, email: `pair${i}@example.com`,
+    }).value;
+
+    await createRegistration(team(1), { yearThree: YEAR_THREE_LIMIT });
+    await createRegistration(team(2), { yearThree: YEAR_THREE_LIMIT });
+    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, 1);
+
+    // A third pair needs two places but only one remains.
+    await assert.rejects(
+      () => createRegistration(team(3), { yearThree: YEAR_THREE_LIMIT }),
+      error => { assert.equal(error.name, 'CapacityError'); return true; });
+
+    // A single Year 3 student still fits in the last place.
+    const single = await createRegistration(validateRegistration({
+      event: 'Debate', choice: 'iOS', teamName: 'Mixed',
+      name: 'Y3 Lead', department: 'IT', year: '3',
+      partnerName: 'Y2 Mate', partnerDepartment: 'IT', partnerYear: '2',
+      phone: '9644400001', email: 'mixed@example.com',
+    }).value, { yearThree: YEAR_THREE_LIMIT });
+    assert.ok(single.id);
+    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, 0);
   });
 });

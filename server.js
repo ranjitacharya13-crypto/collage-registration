@@ -9,10 +9,11 @@ import { readFile } from 'node:fs/promises';
 import { join, extname, normalize } from 'node:path';
 import {
   createRegistration, stats, allRegistrations, listRegistrations,
+  yearThreeRemaining as readYearThreeRemaining,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
   verifyConnection, healthCheck, STORAGE,
 } from './src/server/store.js';
-import { validateRegistration, ALLOWED_EVENTS } from './src/server/validate.js';
+import { validateRegistration, ALLOWED_EVENTS, YEAR_THREE_LIMIT } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
 
 const PORT = Number(process.env.API_PORT || 1215);
@@ -127,6 +128,21 @@ async function publicStats(force = false) {
   return statsCache.inflight;
 }
 
+// Year 3 availability, cached briefly so the public endpoint cannot hammer
+// the database. Falls back to the last good value if a read fails.
+let yearThreeCache = { value: null, at: 0 };
+async function yearThreeRemaining() {
+  const now = Date.now();
+  if (yearThreeCache.value && now - yearThreeCache.at < 3000) return yearThreeCache.value;
+  try {
+    const value = await readYearThreeRemaining(YEAR_THREE_LIMIT);
+    yearThreeCache = { value, at: now };
+    return value;
+  } catch {
+    return yearThreeCache.value || {};
+  }
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -194,9 +210,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/api/events') {
       const summary = await publicStats();
+      const yearThree = await yearThreeRemaining();
+      const body = { ...summary, yearThreeLimit: YEAR_THREE_LIMIT, yearThreeRemaining: yearThree };
       return json(res, 200, TOTAL_CAPACITY
-        ? { ...summary, capacity: TOTAL_CAPACITY, remaining: Math.max(0, TOTAL_CAPACITY - summary.total) }
-        : summary);
+        ? { ...body, capacity: TOTAL_CAPACITY, remaining: Math.max(0, TOTAL_CAPACITY - summary.total) }
+        : body);
     }
 
     if (req.method === 'GET' && pathname === '/api/live') {
@@ -222,7 +240,7 @@ const server = http.createServer(async (req, res) => {
 
       let registration;
       try {
-        registration = await createRegistration(checked.value, { total: TOTAL_CAPACITY || undefined });
+        registration = await createRegistration(checked.value, { total: TOTAL_CAPACITY || undefined, yearThree: YEAR_THREE_LIMIT });
       } catch (error) {
         if (error instanceof DuplicateError) return json(res, 409, { error: error.message });
         if (error instanceof CapacityError) return json(res, 409, { error: error.message });
