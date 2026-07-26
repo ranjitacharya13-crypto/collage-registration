@@ -10,7 +10,8 @@ import { join, extname, normalize } from 'node:path';
 import {
   createRegistration, stats, allRegistrations, listRegistrations,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
-} from './src/server/db.js';
+  verifyConnection, STORAGE,
+} from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
 
@@ -107,7 +108,7 @@ function broadcast(type, payload) {
   }
 }
 
-const publicStats = () => stats(ALLOWED_EVENTS);
+const publicStats = () => stats(ALLOWED_EVENTS);   // async
 
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -161,16 +162,16 @@ const server = http.createServer(async (req, res) => {
   try {
     // ---------- public ----------
     if (req.method === 'GET' && pathname === '/api/health') {
-      const summary = publicStats();
+      const summary = await publicStats();
       return json(res, 200, {
-        ok: true, service: 'aura-api', storage: 'sqlite',
+        ok: true, service: 'aura-api', storage: STORAGE,
         registrations: summary.total, realtimeClients: listeners.size,
         uptimeSeconds: Math.round(process.uptime()),
       });
     }
 
     if (req.method === 'GET' && pathname === '/api/events') {
-      const summary = publicStats();
+      const summary = await publicStats();
       return json(res, 200, TOTAL_CAPACITY
         ? { ...summary, capacity: TOTAL_CAPACITY, remaining: Math.max(0, TOTAL_CAPACITY - summary.total) }
         : summary);
@@ -181,7 +182,7 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform',
         Connection: 'keep-alive', 'X-Accel-Buffering': 'no',
       });
-      res.write(`event: dashboard\ndata: ${JSON.stringify(publicStats())}\n\n`);
+      res.write(`event: dashboard\ndata: ${JSON.stringify(await publicStats())}\n\n`);
       listeners.add(res);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch { /* closed */ } }, 25_000);
       const drop = () => { clearInterval(ping); listeners.delete(res); };
@@ -199,14 +200,14 @@ const server = http.createServer(async (req, res) => {
 
       let registration;
       try {
-        registration = createRegistration(checked.value, { total: TOTAL_CAPACITY || undefined });
+        registration = await createRegistration(checked.value, { total: TOTAL_CAPACITY || undefined });
       } catch (error) {
         if (error instanceof DuplicateError) return json(res, 409, { error: error.message });
         if (error instanceof CapacityError) return json(res, 409, { error: error.message });
         throw error;
       }
 
-      const dashboard = publicStats();
+      const dashboard = await publicStats();
       broadcast('registration', { event: registration.event, createdAt: registration.createdAt });
       broadcast('dashboard', dashboard);
       return json(res, 201, { ok: true, registration: { id: registration.id, event: registration.event }, dashboard });
@@ -247,16 +248,16 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/admin/registrations') {
-      const result = listRegistrations({
+      const result = await listRegistrations({
         page: url.searchParams.get('page'),
         pageSize: url.searchParams.get('pageSize'),
         query: url.searchParams.get('q') || '',
       });
-      return json(res, 200, { ...result, dashboard: publicStats() });
+      return json(res, 200, { ...result, dashboard: await publicStats() });
     }
 
     if (req.method === 'GET' && (pathname === '/api/admin/analytics' || pathname === '/api/admin/report')) {
-      const summary = publicStats();
+      const summary = await publicStats();
       if (pathname === '/api/admin/analytics') return json(res, 200, summary);
       return json(res, 200, {
         ...summary,
@@ -267,7 +268,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/admin/export') {
-      const rows = allRegistrations();
+      const rows = await allRegistrations();
       const format = (url.searchParams.get('format') || 'xlsx').toLowerCase();
       if (format === 'csv') {
         res.writeHead(200, {
@@ -302,8 +303,19 @@ server.headersTimeout = 20_000;
 server.requestTimeout = 30_000;
 server.keepAliveTimeout = 65_000;
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
   if (legacyImported) console.log(`Imported ${legacyImported} registration(s) from the old JSON file.`);
+  if (STORAGE === 'supabase') {
+    try {
+      await verifyConnection();
+      console.log('Storage: Supabase (permanent cloud database) — connected.');
+    } catch (error) {
+      console.error('Storage: Supabase configured but UNREACHABLE:', error.message);
+      console.error('Check SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY, and that supabase-schema.sql has been run.');
+    }
+  } else {
+    console.log('Storage: local SQLite file (data/aura.db).');
+  }
   console.log(`Aura API running on http://${HOST}:${PORT}`);
 });
 

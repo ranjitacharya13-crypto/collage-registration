@@ -5,7 +5,7 @@
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { allRegistrations, listRegistrations, stats } from '../../src/server/db.js';
+import { allRegistrations, listRegistrations, stats, STORAGE } from '../../src/server/store.js';
 import { ALLOWED_EVENTS } from '../../src/server/validate.js';
 import { validateRegistration } from '../../src/server/validate.js';
 import { buildXlsx, buildCsv, exportFilename } from '../../src/server/export.js';
@@ -13,7 +13,7 @@ import { DAYS, EVENTS } from '../../src/schedule.js';
 
 const EXPORT_DIR = process.env.EXPORT_DIR || join(process.cwd(), 'exports');
 
-const summary = () => stats(ALLOWED_EVENTS);
+const summary = () => stats(ALLOWED_EVENTS);   // async
 
 const catalogue = () => EVENTS.map(event => ({
   name: event.name,
@@ -28,8 +28,8 @@ const catalogue = () => EVENTS.map(event => ({
 }));
 
 /** Writes the full registration list to exports/ and returns the file path. */
-function writeExport(format = 'xlsx') {
-  const rows = allRegistrations();
+async function writeExport(format = 'xlsx') {
+  const rows = await allRegistrations();
   mkdirSync(EXPORT_DIR, { recursive: true });
   const filename = exportFilename(format === 'csv' ? 'csv' : 'xlsx');
   const path = join(EXPORT_DIR, filename);
@@ -61,17 +61,17 @@ export async function execute(name, args = {}) {
       return { answer: await localChat(args.prompt || '') };
 
     case 'list_registrations': {
-      const result = listRegistrations({ page: args.page, pageSize: args.pageSize, query: args.query });
+      const result = await listRegistrations({ page: args.page, pageSize: args.pageSize, query: args.query });
       return result;
     }
 
     case 'export_excel': {
-      const result = writeExport(args.format);
+      const result = await writeExport(args.format);
       return { ...result, message: `Wrote ${result.rows} registration(s) to ${result.path}` };
     }
 
     case 'database_query':
-      return args.query === 'registrations' ? allRegistrations() : summary();
+      return args.query === 'registrations' ? await allRegistrations() : await summary();
 
     case 'event_management':
       return { days: DAYS, events: catalogue() };
@@ -86,8 +86,8 @@ export async function execute(name, args = {}) {
       return summary();
 
     case 'admin_commands': {
-      const data = summary();
-      if (args.command === 'health') return { ok: true, storage: 'sqlite', registrations: data.total };
+      const data = await summary();
+      if (args.command === 'health') return { ok: true, storage: STORAGE, registrations: data.total };
       return {
         ...data,
         recommendations: Object.entries(data.byEvent)
@@ -97,7 +97,7 @@ export async function execute(name, args = {}) {
     }
 
     case 'report_generation': {
-      const data = summary();
+      const data = await summary();
       const busiest = Object.entries(data.byEvent).sort((a, b) => b[1] - a[1])[0];
       return {
         title: 'AURA 2026 live registration report',
@@ -108,7 +108,7 @@ export async function execute(name, args = {}) {
     }
 
     case 'search': {
-      const result = listRegistrations({ query: args.query || '', pageSize: 100 });
+      const result = await listRegistrations({ query: args.query || '', pageSize: 100 });
       return { matches: result.total, registrations: result.rows };
     }
 

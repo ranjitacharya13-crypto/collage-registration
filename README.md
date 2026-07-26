@@ -45,17 +45,39 @@ the session cookie is marked `Secure` automatically when it sees
 
 ## Data
 
-Registrations are stored in SQLite at `data/aura.db` (WAL mode).
+Two storage backends. The API picks one automatically at startup and prints
+which it is using.
+
+### Permanent cloud database (Supabase) — recommended for the live site
+
+1. In the Supabase dashboard open **SQL Editor → New query**, paste the whole
+   of `supabase-schema.sql`, and click **Run**.
+2. Open **Project Settings → API** and copy:
+   - **Project URL** → `SUPABASE_URL`
+   - **service_role / secret** key (click *Reveal*) → `SUPABASE_SERVICE_ROLE_KEY`
+3. Put both in `.env` and restart. You should see:
+
+```
+Storage: Supabase (permanent cloud database) — connected.
+```
+
+Data then lives in Postgres, survives redeploys, and is shared by every
+instance of the app. The service role key stays on the server and is never
+sent to the browser.
+
+### Local file (default)
+
+With the Supabase values blank, registrations are stored in SQLite at
+`data/aura.db`. Fine for development, but the file lives on one machine only.
+
+### Guarantees (both backends)
 
 - Duplicate email or phone **per event** is rejected by a database UNIQUE
-  index, so it holds even when requests arrive simultaneously.
-- Capacity is checked inside the insert transaction, so the last place cannot
-  be given to two people.
-- An existing `data/registrations.json` from an older version is imported
-  automatically on first start and renamed to `.imported`.
-
-Back up by copying `data/aura.db` (with `-wal` and `-shm` if present), or just
-download the Excel export.
+  index, so it holds even when submissions arrive simultaneously.
+- Capacity is enforced inside the insert, so the last place cannot be given to
+  two people.
+- An older `data/registrations.json` is imported automatically on first start
+  (SQLite mode).
 
 ## Admin
 

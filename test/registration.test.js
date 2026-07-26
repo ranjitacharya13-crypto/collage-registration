@@ -80,72 +80,72 @@ describe('validation', () => {
 });
 
 describe('storage', () => {
-  test('persists a registration', () => {
-    const row = createRegistration(validateRegistration(solo()).value);
+  test('persists a registration', async () => {
+    const row = await createRegistration(validateRegistration(solo()).value);
     assert.ok(row.id);
-    assert.equal(stats(['Bug Hunt']).total, 1);
+    assert.equal((await stats(['Bug Hunt'])).total, 1);
   });
 
-  test('rejects a duplicate email for the same event', () => {
-    assert.throws(() => createRegistration(validateRegistration(solo({ phone: '9999999999' })).value), DuplicateError);
+  test('rejects a duplicate email for the same event', async () => {
+    await assert.rejects(() => createRegistration(validateRegistration(solo({ phone: '9999999999' })).value), DuplicateError);
   });
 
-  test('rejects a duplicate phone for the same event', () => {
-    assert.throws(() => createRegistration(validateRegistration(solo({ email: 'other@example.com' })).value), DuplicateError);
+  test('rejects a duplicate phone for the same event', async () => {
+    await assert.rejects(() => createRegistration(validateRegistration(solo({ email: 'other@example.com' })).value), DuplicateError);
   });
 
-  test('ignores phone formatting when detecting duplicates', () => {
-    assert.throws(
+  test('ignores phone formatting when detecting duplicates', async () => {
+    await assert.rejects(
       () => createRegistration(validateRegistration(solo({ email: 'x@example.com', phone: '+919876543210' })).value),
       DuplicateError);
   });
 
-  test('allows the same person in a different event', () => {
-    const row = createRegistration(validateRegistration(team({ email: 'asha@example.com', phone: '9876543210' })).value);
+  test('allows the same person in a different event', async () => {
+    const row = await createRegistration(validateRegistration(team({ email: 'asha@example.com', phone: '9876543210' })).value);
     assert.ok(row.id);
   });
 
-  test('stores team and choice fields', () => {
-    const row = createRegistration(validateRegistration(team({
+  test('stores team and choice fields', async () => {
+    const row = await createRegistration(validateRegistration(team({
       event: 'Debate', choice: 'Android', email: 'deb@example.com', phone: '9800000001',
     })).value);
     assert.equal(row.choice, 'Android');
     assert.equal(row.partnerName, 'Chitra S');
   });
 
-  test('enforces total capacity atomically', () => {
-    assert.throws(
+  test('enforces total capacity atomically', async () => {
+    await assert.rejects(
       () => createRegistration(
         validateRegistration(solo({ email: 'cap@example.com', phone: '9700000001' })).value,
         { total: 1 }),
       CapacityError);
   });
 
-  test('search and pagination work', () => {
-    const all = listRegistrations({ pageSize: 100 });
+  test('search and pagination work', async () => {
+    const all = await listRegistrations({ pageSize: 100 });
     assert.ok(all.total >= 3, `expected at least 3 rows, got ${all.total}`);
-    const found = listRegistrations({ query: 'Falcons' });
+    const found = await listRegistrations({ query: 'Falcons' });
     assert.ok(found.total >= 1);
     assert.ok(found.rows.every(row => row.teamName === 'Falcons'));
-    const page = listRegistrations({ page: 1, pageSize: 2 });
+    const page = await listRegistrations({ page: 1, pageSize: 2 });
     assert.equal(page.rows.length, 2);
     assert.ok(page.pages >= 2);
   });
 
-  test('handles a burst of concurrent-style inserts without loss', () => {
-    const before = stats([]).total;
+  test('handles a burst of concurrent-style inserts without loss', async () => {
+    const before = (await stats([])).total;
     for (let i = 0; i < 200; i += 1) {
-      createRegistration(validateRegistration(solo({
+      await createRegistration(validateRegistration(solo({
         name: `Bulk ${i}`, email: `bulk${i}@example.com`, phone: `98000${String(i).padStart(5, '0')}`,
       })).value);
     }
-    assert.equal(stats([]).total, before + 200);
+    assert.equal((await stats([])).total, before + 200);
   });
 });
 
 describe('exports', () => {
-  test('csv includes a header and every row', () => {
-    const rows = allRegistrations();
+  test('csv includes a header and every row', async () => {
+    const rows = await allRegistrations();
     const csv = buildCsv(rows);
     assert.ok(csv.startsWith('\uFEFF'), 'has BOM for Excel');
     assert.ok(csv.includes('Participant 2'));
@@ -157,8 +157,8 @@ describe('exports', () => {
     assert.ok(csv.includes('"A, ""B"""'));
   });
 
-  test('xlsx is a valid non-empty zip', () => {
-    const buffer = buildXlsx(allRegistrations());
+  test('xlsx is a valid non-empty zip', async () => {
+    const buffer = buildXlsx(await allRegistrations());
     assert.ok(buffer.length > 500);
     assert.equal(buffer.subarray(0, 2).toString(), 'PK');       // zip magic
     assert.ok(buffer.includes(Buffer.from('xl/worksheets/sheet1.xml')));

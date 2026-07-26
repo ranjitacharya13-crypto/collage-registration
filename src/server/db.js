@@ -149,7 +149,7 @@ export class CapacityError extends Error {
  * Capacity is checked inside the same transaction as the insert, so the last
  * seat cannot be handed to two people at once.
  */
-export function createRegistration(value, limits = {}) {
+export async function createRegistration(value, limits = {}) {
   const record = {
     id: crypto.randomUUID(),
     ...value,
@@ -182,7 +182,7 @@ export function createRegistration(value, limits = {}) {
   return record;
 }
 
-export function stats(knownEvents = []) {
+export async function stats(knownEvents = []) {
   const byEvent = Object.fromEntries(knownEvents.map(event => [event, 0]));
   for (const row of statements.byEvent.all()) byEvent[row.event] = row.count;
   return {
@@ -193,10 +193,10 @@ export function stats(knownEvents = []) {
   };
 }
 
-export const allRegistrations = () => statements.all.all();
+export const allRegistrations = async () => statements.all.all();
 
 /** Paginated + searchable listing for the admin dashboard. */
-export function listRegistrations({ page = 1, pageSize = 50, query = '' } = {}) {
+export async function listRegistrations({ page = 1, pageSize = 50, query = '' } = {}) {
   const size = Math.min(Math.max(1, Number(pageSize) || 50), 500);
   const current = Math.max(1, Number(page) || 1);
   const offset = (current - 1) * size;
