@@ -5,10 +5,6 @@
 //
 // Both modules export the same interface, so nothing else in the codebase
 // needs to know which one is in use.
-//
-// In production a missing Supabase configuration is a hard failure. Silently
-// falling back to a local file would mean registrations are written to a disk
-// that disappears on the next deploy, which is worse than not starting at all.
 
 const hasSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -22,6 +18,7 @@ const fail = message => {
   console.error(`[storage] ${message}`);
   if (!isServerless) process.exit(1);
 };
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.REQUIRE_SUPABASE === 'true';
 const allowLocalFallback = process.env.ALLOW_SQLITE_FALLBACK === 'true';
 

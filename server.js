@@ -1,4 +1,4 @@
-// AURA 2026 registration API.
+﻿// AURA 2026 registration API.
 //
 // Design goals: never lose a registration, never accept a duplicate, never
 // crash the process, and stay responsive for both students and organisers.
@@ -11,7 +11,7 @@ import {
   createRegistration, stats, allRegistrations, listRegistrations,
   yearThreeRemaining as readYearThreeRemaining,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
-  verifyConnection, healthCheck, STORAGE,
+  verifyConnection, healthCheck, STORAGE, configError,
 } from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS, YEAR_THREE_LIMIT } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
@@ -193,6 +193,7 @@ export async function handler(req, res) {
       try { total = (await publicStats()).total; } catch { /* reported via probe */ }
       return json(res, probe.ok ? 200 : 503, {
         ok: probe.ok, service: 'aura-api', storage: STORAGE,
+        configError: configError || undefined,
         database: probe.ok ? 'connected' : 'unreachable',
         databaseLatencyMs: probe.latencyMs ?? null,
         databaseError: probe.error || undefined,
@@ -354,7 +355,7 @@ if (!isServerless) server.listen(PORT, HOST, async () => {
   if (STORAGE === 'supabase') {
     try {
       await verifyConnection();
-      console.log('Storage: Supabase (permanent cloud database) — connected.');
+      console.log('Storage: Supabase (permanent cloud database) â€” connected.');
     } catch (error) {
       console.error('');
       console.error('  Supabase is configured but UNREACHABLE:');
@@ -373,7 +374,7 @@ if (!isServerless) server.listen(PORT, HOST, async () => {
       console.error('  Continuing anyway because this is not production.');
     }
   } else {
-    console.log('Storage: local SQLite file (data/aura.db) — DEVELOPMENT ONLY, not persistent.');
+    console.log('Storage: local SQLite file (data/aura.db) â€” DEVELOPMENT ONLY, not persistent.');
   }
   console.log(`Aura API running on http://${HOST}:${PORT}`);
 });
