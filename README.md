@@ -124,6 +124,26 @@ Required environment variables in production:
 | `NODE_ENV=production` | enforces the database requirement |
 | `TOTAL_CAPACITY` | optional hard cap |
 
+### Vercel
+
+`vercel.json` and `api/index.js` are included. Import the repository at
+vercel.com, then add the environment variables below in **Settings ->
+Environment Variables**. Vercel serves `dist/` from its CDN and routes
+`/api/*` to a serverless function that reuses the same request handler.
+
+On Vercel you **must** also set `SESSION_SECRET` to a long random string:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Requests land on different instances, so admin sessions are signed cookies
+rather than server memory; without a shared secret administrators would be
+logged out at random. `/api/live` returns a single snapshot instead of a
+stream there, which the dashboard handles because it polls.
+
+### Other hosts
+
 `Dockerfile` and `render.yaml` are included. Point health checks at
 `/api/health`, which returns 503 when the database is unreachable.
 

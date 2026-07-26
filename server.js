@@ -15,6 +15,7 @@ import {
 } from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS, YEAR_THREE_LIMIT } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
+import { createSession, verifySession, sessionSecretWarning } from './src/server/session.js';
 
 const PORT = Number(process.env.API_PORT || 1215);
 const HOST = process.env.API_HOST || '127.0.0.1';
@@ -24,13 +25,13 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin@123';
 const TOTAL_CAPACITY = Number(process.env.TOTAL_CAPACITY || 0);   // 0 = unlimited
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const SERVE_STATIC = process.env.SERVE_STATIC !== 'false';
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const DIST_DIR = join(process.cwd(), 'dist');
 
 // A crash would take every user down, so log and keep serving instead.
 process.on('uncaughtException', error => console.error('[uncaught]', error));
 process.on('unhandledRejection', error => console.error('[unhandled]', error));
 
-const sessions = new Map();
 const listeners = new Set();
 const rateBuckets = new Map();
 
@@ -53,16 +54,8 @@ function cookies(req) {
     .map(([key, value]) => [key, decodeURIComponent(value)]));
 }
 
-function currentSession(req) {
-  const token = cookies(req).aura_admin;
-  if (!token) return null;
-  const session = sessions.get(token);
-  if (!session) return null;
-  if (Date.now() > session.expires) { sessions.delete(token); return null; }
-  return session;
-}
-
-const isAdmin = req => Boolean(currentSession(req));
+// Signed cookie, so any instance can verify it without shared memory.
+const isAdmin = req => verifySession(cookies(req).aura_admin);
 
 /** Simple in-process rate limit; enough to stop accidental floods and bots. */
 function rateLimit(key, limit, windowMs) {
@@ -80,7 +73,6 @@ function rateLimit(key, limit, windowMs) {
 setInterval(() => {
   const now = Date.now();
   for (const [key, bucket] of rateBuckets) if (now > bucket.reset) rateBuckets.delete(key);
-  for (const [token, session] of sessions) if (now > session.expires) sessions.delete(token);
 }, 60_000).unref();
 
 const clientIp = req =>
@@ -170,7 +162,8 @@ async function serveStatic(req, res, pathname) {
   return false;
 }
 
-const server = http.createServer(async (req, res) => {
+/** Request handler, exported so serverless hosts can mount it directly. */
+export async function handler(req, res) {
   let url;
   try {
     url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -218,6 +211,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/live') {
+      // Serverless functions cannot hold a stream open, and the dashboard
+      // polls anyway, so answer with a single snapshot instead of hanging.
+      if (isServerless) {
+        return json(res, 200, { ...(await publicStats()), streaming: false });
+      }
       res.writeHead(200, {
         'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform',
         Connection: 'keep-alive', 'X-Accel-Buffering': 'no',
@@ -273,17 +271,14 @@ const server = http.createServer(async (req, res) => {
       const { username = '', password = '' } = await readBody(req);
       const ok = safeEqual(username, ADMIN_USER) & safeEqual(password, ADMIN_PASSWORD);
       if (!ok) return json(res, 401, { error: 'Invalid administrator credentials.' });
-      const token = randomUUID();
-      sessions.set(token, { expires: Date.now() + SESSION_TTL_MS });
+      const session = createSession();
       const secure = req.headers['x-forwarded-proto'] === 'https' ? ' Secure;' : '';
       return json(res, 200, { ok: true }, {
-        'Set-Cookie': `aura_admin=${token}; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_MS / 1000}`,
+        'Set-Cookie': `aura_admin=${session.value}; HttpOnly;${secure} SameSite=Strict; Path=/; Max-Age=${session.maxAgeSeconds}`,
       });
     }
 
     if (req.method === 'POST' && pathname === '/api/admin/logout') {
-      const token = cookies(req).aura_admin;
-      if (token) sessions.delete(token);
       return json(res, 200, { ok: true }, { 'Set-Cookie': 'aura_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' });
     }
 
@@ -346,13 +341,15 @@ const server = http.createServer(async (req, res) => {
     const message = /too large|Invalid JSON/i.test(error?.message || '') ? error.message : 'Server error.';
     return json(res, /too large|Invalid JSON/i.test(error?.message || '') ? 400 : 500, { error: message });
   }
-});
+}
+
+const server = http.createServer(handler);
 
 server.headersTimeout = 20_000;
 server.requestTimeout = 30_000;
 server.keepAliveTimeout = 65_000;
 
-server.listen(PORT, HOST, async () => {
+if (!isServerless) server.listen(PORT, HOST, async () => {
   if (legacyImported) console.log(`Imported ${legacyImported} registration(s) from the old JSON file.`);
   if (STORAGE === 'supabase') {
     try {
@@ -387,5 +384,7 @@ function shutdown(signal) {
   server.close(() => { closeDatabase(); process.exit(0); });
   setTimeout(() => { closeDatabase(); process.exit(0); }, 5000).unref();
 }
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+if (!isServerless) {
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+}
