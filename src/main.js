@@ -131,32 +131,65 @@ scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0xbcdcff,
 function ring(t, color) { const m = new THREE.Mesh(new THREE.TorusGeometry(2.2, .025, 6, 48), new THREE.MeshBasicMaterial({color, transparent:true, opacity:.38})); m.position.copy(path.getPointAt(t)); m.rotation.set(Math.random(), Math.random(), 0); group.add(m); return m; }
 const rings = [ring(.17, 0x00e5ff), ring(.34, 0xff2e9f), ring(.56, 0x00e5ff), ring(.75, 0xffd66b)];
 
+// The journey opens as a title sequence: the college, then the department,
+// then the festival name, before the schedule begins.
 const milestones = [
-  [.05, 'AURA 2026', 'SANKARA POLYTECHNIC COLLEGE', 0x00e5ff, 1.25], [.15, 'SPEECH ENDS', '10:50 AM', 0x92a1bd, .55],
-  [.12, 'DAY 1', `${DAYS[0].date}\n${DAYS[0].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
+  [.045, 'SANKARA', 'POLYTECHNIC COLLEGE', 0x9fe8ff, 1.15],
+  [.085, 'DEPARTMENT OF CSE', 'PRESENTS', 0xffd66b, .62],
+  [.125, 'AURA 2026', SYMPOSIUM.dateRange, 0x00e5ff, 1.35],
+  [.175, 'OPENING ADDRESS', '10:20 AM — 10:50 AM', 0x92a1bd, .55],
+  [.215, 'DAY 1', `${DAYS[0].date}\n${DAYS[0].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
   [.41, 'TREASURE HUNT', '11:30 AM — 12:30 PM', 0xff2e9f, .85], [.49, 'LUNCH BREAK', '1:20 PM — 1:50 PM', 0x92a1bd, .55],
   [.56, 'BUG HUNT', '2:30 PM — 3:15 PM', 0x00e5ff, .85], [.62, 'SINGING & DANCE', '2:15 PM — 4:00 PM', 0xffd66b, .6],
   [.70, 'DAY 2', `${DAYS[1].date}\n${DAYS[1].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.78, 'MURDER MYSTERY', '11:30 AM — 12:45 PM', 0xff2e9f, .85],
   [.85, 'DEBATE', '2:30 PM — 3:30 PM', 0x00e5ff, .9], [.94, 'REGISTRATION HUB', 'CHOOSE YOUR PATH', 0xffd66b, .9]
 ];
 // Path positions of the two day markers, reused by the HUD badge.
-const DAY_MARKS = [ { t: .12, label: DAYS[0].label, date: DAYS[0].date }, { t: .70, label: DAYS[1].label, date: DAYS[1].date } ];
+const DAY_MARKS = [ { t: .215, label: DAYS[0].label, date: DAYS[0].date }, { t: .70, label: DAYS[1].label, date: DAYS[1].date } ];
 const textItems = [];
 function text3d(label, detail, color, scale) {
   const g = new THREE.Group(); const title = new Text(); title.text = label; title.fontSize = scale; title.color = 0xffffff; title.anchorX = 'center'; title.anchorY = 'middle'; title.font = 'https://fonts.gstatic.com/s/syncopate/v22/pe0pMIuPIYBCpEV5eFdC4B2Z.ttf'; title.outlineWidth = .012; title.outlineColor = color; g.add(title);
   const sub = new Text(); sub.text = label === 'FLUSH THE BRAIN' ? `${detail}\nMONITOR: BHAVAV, AARABHI` : detail; sub.fontSize = scale * .25; sub.color = 0xdce7ff; sub.anchorX = 'center'; sub.position.y = -scale*.7; sub.letterSpacing = .1; g.add(sub); title.sync(); sub.sync(); return g;
 }
-milestones.forEach(([t, a, b, c, s], i) => { const eventNames = ['FLUSH THE BRAIN', 'TREASURE HUNT', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE']; const isEvent = eventNames.includes(a); const isDayMarker = a === 'DAY 1' || a === 'DAY 2'; const item = text3d(a,b,c,isEvent ? 1.2 : s); item.position.copy(path.getPointAt(t)); item.position.add(isEvent || isDayMarker ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(i%2 ? 2.6 : -2.6, i%3-1, 0)); item.userData = {t, label:a}; group.add(item); textItems.push(item); });
+// Titles and day markers sit dead ahead on the flight path; smaller notes are
+// offset to either side so the corridor does not feel like a single column.
+const TITLE_CARDS = ['SANKARA', 'DEPARTMENT OF CSE', 'AURA 2026'];
+milestones.forEach(([t, a, b, c, s], i) => {
+  const eventNames = ['FLUSH THE BRAIN', 'TREASURE HUNT', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE'];
+  const isEvent = eventNames.includes(a);
+  const isDayMarker = a === 'DAY 1' || a === 'DAY 2';
+  const isTitle = TITLE_CARDS.includes(a);
+  const item = text3d(a, b, c, isEvent ? 1.2 : s);
+  item.position.copy(path.getPointAt(t));
+  item.position.add(isEvent || isDayMarker || isTitle
+    ? new THREE.Vector3(0, 0, 0)
+    : new THREE.Vector3(i % 2 ? 2.6 : -2.6, i % 3 - 1, 0));
+  item.userData = { t, label: a };
+  group.add(item);
+  textItems.push(item);
+});
 
 let target = 0, progress = 0, touchY = 0, touching = false, velocity = 0;
 const clamp = THREE.MathUtils.clamp;
-function advance(delta) { target = clamp(target + delta, 0, 1); if (target > .018) document.querySelector('#intro').classList.add('is-hidden'); }
+function advance(delta) { target = clamp(target + delta, 0, 1); if (target > .012) document.querySelector('#intro').classList.add('is-hidden'); }
 window.addEventListener('wheel', e => { e.preventDefault(); advance(e.deltaY * .00016); velocity = e.deltaY * .000006; }, {passive:false});
 canvas.addEventListener('touchstart', e => { touching=true; touchY=e.touches[0].clientY; velocity=0; }, {passive:true});
 canvas.addEventListener('touchmove', e => { e.preventDefault(); const y=e.touches[0].clientY; const dy=touchY-y; touchY=y; velocity=dy*.00032; advance(velocity); }, {passive:false});
 canvas.addEventListener('touchend', () => touching=false, {passive:true});
 
-const labels = ['READY FOR TAKEOFF','OPENING ADDRESS','DAY ONE','FLUSH THE BRAIN','TREASURE HUNT','LUNCH BREAK','BUG HUNT','DAY TWO','MURDER MYSTERY','DEBATE','REGISTRATION HUB'];
+// The footer chapter is taken from whichever milestone the camera has last
+// passed, so the caption always matches what is on screen.
+const CHAPTERS = milestones
+  .map(([t, label]) => ({ t, label }))
+  .sort((a, b) => a.t - b.t);
+function chapterAt(progress) {
+  if (progress < .02) return 'READY FOR TAKEOFF';
+  let current = CHAPTERS[0].label;
+  for (const chapter of CHAPTERS) {
+    if (progress >= chapter.t - .03) current = chapter.label;
+  }
+  return current;
+}
 const mainEvents = ['FLUSH THE BRAIN', 'TREASURE HUNT', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE'];
 // Built from schedule.js so the HUD always matches the printed programme.
 const eventInfo = Object.fromEntries(EVENTS.map(event => [
@@ -166,7 +199,7 @@ const eventInfo = Object.fromEntries(EVENTS.map(event => [
 function resize() { const w=innerWidth,h=innerHeight; camera.aspect=w/h; camera.fov=w<500?72:62; camera.updateProjectionMatrix(); renderer.setSize(w,h,false); renderer.setPixelRatio(Math.min(devicePixelRatio, w<768?1:2)); }
 addEventListener('resize', resize, {passive:true}); resize();
 let last=performance.now(), lastMobileRender=0;
-function render(now) { requestAnimationFrame(render); if (isMobile && now - lastMobileRender < 22) return; lastMobileRender = now; const dt=Math.min(.05,(now-last)/1000); last=now; if(!touching) { advance(velocity); velocity*=.86; } progress += (target-progress)*(isMobile?.055:.045); const point = path.getPointAt(progress); const lookPoint = path.getPointAt(Math.min(.999, progress + .025)); camera.position.copy(point); camera.position.y += Math.sin(now*.0007)*.08; camera.lookAt(lookPoint); glow.position.copy(point).add(new THREE.Vector3(2,3,2)); pink.position.copy(point).add(new THREE.Vector3(-3,-2,-2)); rings.forEach((r,i)=>r.rotation.z+=dt*(.13+i*.04)); textItems.forEach(item=>{const distance=Math.abs(progress-item.userData.t); item.visible=distance<.11 && !mainEvents.includes(item.userData.label); if(item.visible){item.lookAt(camera.position); item.children.forEach(c=>c.material.opacity=clamp(1-distance/.11,0,1));}}); document.querySelector('#progress').style.height=`${progress*100}%`; document.querySelector('#chapter').textContent=labels[Math.min(labels.length-1,Math.floor(progress*labels.length))]; const nearest = milestones.reduce((best, item) => Math.abs(item[0] - progress) < Math.abs(best[0] - progress) ? item : best, milestones[0]); const eventName = mainEvents.includes(nearest[1]) ? nearest[1] : ''; const eventDetail = eventInfo[eventName] || ''; document.querySelector('#event-name').textContent = eventName; document.querySelector('#event-name').classList.toggle('visible', Boolean(eventName)); document.querySelector('#event-detail').textContent = eventDetail; document.querySelector('#event-detail').classList.toggle('visible', Boolean(eventDetail)); const activeDay = progress >= DAY_MARKS[1].t ? DAY_MARKS[1] : progress >= DAY_MARKS[0].t ? DAY_MARKS[0] : null; const badge = document.querySelector('#day-badge'); badge.textContent = activeDay ? `${activeDay.label.toUpperCase()} · ${activeDay.date}` : ''; badge.classList.toggle('visible', Boolean(activeDay) && progress < .93); document.querySelector('#creative-register').classList.toggle('visible', progress > .90); renderer.render(scene,camera); }
+function render(now) { requestAnimationFrame(render); if (isMobile && now - lastMobileRender < 22) return; lastMobileRender = now; const dt=Math.min(.05,(now-last)/1000); last=now; if(!touching) { advance(velocity); velocity*=.86; } progress += (target-progress)*(isMobile?.055:.045); const point = path.getPointAt(progress); const lookPoint = path.getPointAt(Math.min(.999, progress + .025)); camera.position.copy(point); camera.position.y += Math.sin(now*.0007)*.08; camera.lookAt(lookPoint); glow.position.copy(point).add(new THREE.Vector3(2,3,2)); pink.position.copy(point).add(new THREE.Vector3(-3,-2,-2)); rings.forEach((r,i)=>r.rotation.z+=dt*(.13+i*.04)); textItems.forEach(item=>{const distance=Math.abs(progress-item.userData.t); const introClear=progress>.02||item.userData.t>.06; item.visible=distance<.11 && introClear && !mainEvents.includes(item.userData.label); if(item.visible){item.lookAt(camera.position); item.children.forEach(c=>c.material.opacity=clamp(1-distance/.11,0,1)*clamp((progress-.008)/.02,0,1));}}); document.querySelector('#progress').style.height=`${progress*100}%`; document.querySelector('#chapter').textContent=chapterAt(progress); const nearest = milestones.reduce((best, item) => Math.abs(item[0] - progress) < Math.abs(best[0] - progress) ? item : best, milestones[0]); const eventName = mainEvents.includes(nearest[1]) ? nearest[1] : ''; const eventDetail = eventInfo[eventName] || ''; document.querySelector('#event-name').textContent = eventName; document.querySelector('#event-name').classList.toggle('visible', Boolean(eventName)); document.querySelector('#event-detail').textContent = eventDetail; document.querySelector('#event-detail').classList.toggle('visible', Boolean(eventDetail)); const activeDay = progress >= DAY_MARKS[1].t ? DAY_MARKS[1] : progress >= DAY_MARKS[0].t ? DAY_MARKS[0] : null; const badge = document.querySelector('#day-badge'); badge.textContent = activeDay ? `${activeDay.label.toUpperCase()} · ${activeDay.date}` : ''; badge.classList.toggle('visible', Boolean(activeDay) && progress < .93); document.querySelector('#creative-register').classList.toggle('visible', progress > .90); renderer.render(scene,camera); }
 document.querySelector('#creative-register').addEventListener('click', event => {
   event.preventDefault();
   const button = event.currentTarget;
