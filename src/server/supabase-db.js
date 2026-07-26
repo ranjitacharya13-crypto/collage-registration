@@ -7,7 +7,13 @@
 // server and never reaches the browser. Writes retry with exponential backoff
 // so a transient network blip does not lose a student's registration.
 
-const URL_BASE = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+// Accept the plain project URL, and also tolerate someone pasting the Data API
+// endpoint (…/rest/v1/) that the dashboard shows.
+const URL_BASE = (process.env.SUPABASE_URL || '')
+  .trim()
+  .replace(/\/+$/, '')
+  .replace(/\/rest\/v1$/i, '')
+  .replace(/\/+$/, '');
 const SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const TABLE = 'registrations';
 const REQUEST_TIMEOUT_MS = Number(process.env.SUPABASE_TIMEOUT_MS || 12_000);

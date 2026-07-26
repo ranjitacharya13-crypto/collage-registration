@@ -8,7 +8,8 @@ const info = message => console.log(`        ${message}`);
 
 console.log('\nAURA 2026 — database pre-flight check\n');
 
-const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+const url = (process.env.SUPABASE_URL || '').trim()
+  .replace(/\/+$/, '').replace(/\/rest\/v1$/i, '').replace(/\/+$/, '');
 const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 let failures = 0;
 

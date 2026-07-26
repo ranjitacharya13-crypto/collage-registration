@@ -37,8 +37,14 @@ if (!hasSupabase && isProduction && !allowLocalFallback) {
 }
 
 if (hasSupabase) {
-  const url = process.env.SUPABASE_URL.trim();
-  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url.replace(/\/+$/, ''))) {
+  const url = process.env.SUPABASE_URL.trim()
+    .replace(/\/+$/, '').replace(/\/rest\/v1$/i, '').replace(/\/+$/, '');
+  if (/^postgres(ql)?:\/\//i.test(url)) {
+    console.error('[storage] SUPABASE_URL is a database connection string, not the API URL.');
+    console.error('[storage] Use the Project URL: https://<project-ref>.supabase.co');
+    process.exit(1);
+  }
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(url)) {
     console.warn(`[storage] SUPABASE_URL does not look like a project URL: ${url}`);
     console.warn('[storage] Expected https://<project-ref>.supabase.co — not the database connection string.');
   }
