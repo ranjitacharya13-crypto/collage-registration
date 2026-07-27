@@ -16,12 +16,13 @@ export const DAYS = [
     weekday: 'Thursday',
     dateLong: '30 July 2026',
     items: [
-      { name: 'Flush the Brain', time: '11:30 AM — 12:30 PM', venue: 'Visa Hall', kind: 'event',
-        category: 'non-technical', team: '15 teams of 2', teamSize: 2, rules: '3-image clues · No phones allowed' },
-      { name: 'Treasure Hunt', time: '11:30 AM — 12:30 PM', venue: 'Campus & Library', kind: 'event',
-        category: 'non-technical', team: 'Team of 2', teamSize: 2, rules: 'R1: find 5 papers · R2: identify article numbers / names' },
-      { name: 'Bug Hunt', time: '2:30 PM — 3:15 PM', venue: 'Main Lab', kind: 'event',
+      { name: 'Bug Huntzz', time: '11:30 AM — 12:30 PM', venue: 'Main Lab', kind: 'event',
         category: 'technical', team: 'Single participant', teamSize: 1, rules: 'Theory (C / Python) + practical debugging' },
+      { name: 'Debate', time: '11:30 AM — 12:30 PM (simultaneously)', venue: 'Vyasa Hall', kind: 'event',
+        category: 'technical', team: 'Team of 2', teamSize: 2, rules: 'Android vs iOS · Moderated rounds',
+        choice: { label: 'Side you are arguing for', name: 'side', options: ['Android', 'iOS'] } },
+      { name: 'Flush the Brain', time: '01:45 PM — 02:45 PM', venue: 'Vyasa Hall', kind: 'event',
+        category: 'non-technical', team: '15 teams of 2', teamSize: 2, rules: '3-image clues · No phones allowed' },
     ],
   },
   {
@@ -31,11 +32,10 @@ export const DAYS = [
     weekday: 'Friday',
     dateLong: '31 July 2026',
     items: [
-      { name: 'Murder Mystery', time: '11:30 AM — 12:45 PM', venue: 'Visa Hall', kind: 'event',
+      { name: 'Murder Mystery', time: '11:30 AM — 12:30 PM', venue: 'Vyasa Hall', kind: 'event',
         category: 'non-technical', team: '15 teams of 2', teamSize: 2, rules: 'Projector scenario clues · Find the murderer' },
-      { name: 'Debate: Android vs iOS', time: '2:30 PM — 3:30 PM', venue: '3rd Class Room', kind: 'event',
-        category: 'technical', team: 'Team of 2', teamSize: 2, rules: 'Android vs iOS · Moderated rounds',
-        choice: { label: 'Side you are arguing for', name: 'side', options: ['Android', 'iOS'] } },
+      { name: 'Treasure Hunt', time: '01:45 PM — 02:45 PM', venue: 'Library, Main Lab', kind: 'event',
+        category: 'non-technical', team: 'Team of 2', teamSize: 2, rules: 'R1: find 5 papers · R2: identify article numbers / names' },
     ],
   },
 ];
@@ -44,9 +44,9 @@ export const DAYS = [
 export const REGISTRATION_NAME = {
   'Flush the Brain': 'Flush the Brain',
   'Treasure Hunt': 'Treasure Hunt',
-  'Bug Hunt': 'Bug Hunt',
+  'Bug Huntzz': 'Bug Hunt',
   'Murder Mystery': 'Murder Mystery',
-  'Debate: Android vs iOS': 'Debate',
+  'Debate': 'Debate',
 };
 
 /** Every competitive event, flattened, with its day and date attached. */
