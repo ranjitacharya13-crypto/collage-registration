@@ -90,6 +90,7 @@ app.insertAdjacentHTML('beforeend', `
       <div class="dash-actions">
         <button id="export-xlsx">DOWNLOAD EXCEL ↗</button>
         <button id="export-csv" class="ghost">CSV</button>
+        <button id="clear-all" class="ghost" style="background:#ff3b5c;color:white;border:none;">CLEAR ALL</button>
         <button id="admin-logout" class="ghost">LOG OUT</button>
         <button class="close-dashboard" aria-label="Close">×</button>
       </div>
@@ -103,7 +104,7 @@ app.insertAdjacentHTML('beforeend', `
     <div class="table-wrap"><table><thead><tr>
       <th>#</th><th>Event</th><th>Venue</th><th>Time</th><th>Option</th><th>Team</th>
       <th>Participant 1</th><th>Dept</th><th>Yr</th>
-      <th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th><th>Registered</th>
+      <th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th><th>Registered</th><th></th>
     </tr></thead><tbody id="registration-rows"></tbody></table></div>
     <div class="dash-pager">
       <button id="page-prev" class="ghost">← Prev</button>
@@ -344,12 +345,13 @@ async function loadDashboard() {
   const offset = (result.page - 1) * result.pageSize;
   document.querySelector('#registration-rows').innerHTML = result.rows.map((row, index) => {
     const meta = eventMeta[row.event] || {};
-    return `<tr>
+    return `<tr data-id="${row.id || ''}">
     <td>${offset + index + 1}</td><td>${esc(row.event)}</td><td>${esc(meta.venue || '')}</td><td>${esc(meta.time || '')}</td><td>${esc(row.choice)}</td><td>${esc(row.teamName)}</td>
     <td>${esc(row.name)}</td><td>${esc(row.department)}</td><td>${esc(row.year)}</td>
     <td>${esc(row.partnerName)}</td><td>${esc(row.partnerDepartment)}</td><td>${esc(row.partnerYear)}</td>
     <td>${esc(row.phone)}</td><td>${esc(row.email)}</td>
-    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>`;
+    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+    <td><button class="delete-row" data-id="${row.id || ''}" style="background:#ff3b5c;color:white;border:none;padding:2px 8px;cursor:pointer;">🗑</button></td></tr>`;
   }).join('')
     || '<tr><td colspan="13" class="empty">No registrations found.</td></tr>';
 
@@ -358,6 +360,21 @@ async function loadDashboard() {
   document.querySelector('#page-info').textContent = `Page ${result.page} of ${result.pages}`;
   document.querySelector('#page-prev').disabled = result.page <= 1;
   document.querySelector('#page-next').disabled = result.page >= result.pages;
+
+  // Attach delete handlers
+  document.querySelectorAll('.delete-row').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.currentTarget.dataset.id;
+      if (!id || !confirm('Delete this registration?')) return;
+      try {
+        const res = await fetch(`/api/admin/registrations/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        await loadDashboard();
+      } catch (err) {
+        alert('Error deleting: ' + err.message);
+      }
+    });
+  });
 }
 
 function setAutoRefresh(on) {
@@ -387,6 +404,19 @@ document.querySelector('#page-prev').addEventListener('click', () => { if (dashb
 document.querySelector('#page-next').addEventListener('click', () => { if (dashboard.page < dashboard.pages) { dashboard.page += 1; loadDashboard(); } });
 document.querySelector('#export-xlsx').addEventListener('click', () => window.location.assign('/api/admin/export?format=xlsx'));
 document.querySelector('#export-csv').addEventListener('click', () => window.location.assign('/api/admin/export?format=csv'));
+
+document.querySelector('#clear-all').addEventListener('click', async () => {
+  if (!confirm('⚠️ Delete ALL registrations? This cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/admin/registrations', { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to clear');
+    await loadDashboard();
+    alert('All registrations cleared.');
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+});
+
 document.querySelector('#admin-logout').addEventListener('click', async () => {
   await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
   closeDashboard();

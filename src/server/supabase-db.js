@@ -266,3 +266,22 @@ export async function healthCheck() {
 
 export function closeDatabase() { /* stateless HTTP client */ }
 export const legacyImported = 0;
+
+export async function deleteRegistration(id) {
+  const response = await fetch(`${URL_BASE}/rest/v1/${TABLE}?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: { ...headers, Prefer: 'return=representation' },
+  });
+  if (!response.ok) throw new Error('Failed to delete registration');
+  const rows = await response.json();
+  return rows.length > 0;
+}
+
+export async function clearAllRegistrations() {
+  const response = await fetch(`${URL_BASE}/rest/v1/${TABLE}`, {
+    method: 'DELETE',
+    headers: { ...headers, Prefer: 'return=representation' },
+  });
+  if (!response.ok) throw new Error('Failed to clear registrations');
+  return true;
+}

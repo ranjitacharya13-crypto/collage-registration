@@ -212,6 +212,17 @@ export async function stats(knownEvents = []) {
 
 export const allRegistrations = async () => statements.all.all();
 
+export async function deleteRegistration(id) {
+  const stmt = db.prepare('DELETE FROM registrations WHERE id = ?');
+  const result = stmt.run(id);
+  return result.changes > 0;
+}
+
+export async function clearAllRegistrations() {
+  db.exec('DELETE FROM registrations');
+  return true;
+}
+
 /** Year 3 places still available, per event. */
 export async function yearThreeRemaining(limits = {}) {
   const out = {};

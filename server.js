@@ -12,6 +12,7 @@ import {
   yearThreeRemaining as readYearThreeRemaining,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
   verifyConnection, healthCheck, STORAGE, configError, configWarning, urlInfo,
+  deleteRegistration, clearAllRegistrations,
 } from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS, YEAR_THREE_LIMIT } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
@@ -333,6 +334,32 @@ export async function handler(req, res) {
           .filter(([, count]) => count === 0)
           .map(([event]) => `Promote ${event}: no registrations yet.`),
       });
+    }
+
+    if (req.method === 'DELETE' && pathname === '/api/admin/registrations') {
+      try {
+        await clearAllRegistrations();
+        const dashboard = await publicStats(true);
+        broadcast('dashboard', dashboard);
+        return json(res, 200, { ok: true, message: 'All registrations cleared' });
+      } catch (error) {
+        console.error('[clear all]', error.message);
+        return json(res, 500, { error: 'Failed to clear registrations' });
+      }
+    }
+
+    if (req.method === 'DELETE' && pathname.startsWith('/api/admin/registrations/')) {
+      const id = pathname.split('/').pop();
+      try {
+        const deleted = await deleteRegistration(id);
+        if (!deleted) return json(res, 404, { error: 'Registration not found' });
+        const dashboard = await publicStats(true);
+        broadcast('dashboard', dashboard);
+        return json(res, 200, { ok: true });
+      } catch (error) {
+        console.error('[delete]', error.message);
+        return json(res, 500, { error: 'Failed to delete registration' });
+      }
     }
 
     if (req.method === 'GET' && pathname === '/api/admin/export') {
