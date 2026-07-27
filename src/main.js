@@ -149,7 +149,7 @@ const milestones = [
   [.125, 'AURA 2026', SYMPOSIUM.dateRange, 0x00e5ff, 1.35],
   [.215, 'DAY 1', `${DAYS[0].date}\n${DAYS[0].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
   [.45, 'TREASURE HUNT', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
-  [.57, 'BUG HUNT', '2:30 PM — 3:15 PM', 0x00e5ff, .85],
+  [.57, 'BUG HUNT', '11:30 AM — 12:30 PM · Main Lab', 0x00e5ff, .85],
   [.70, 'DAY 2', `${DAYS[1].date}\n${DAYS[1].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.78, 'MURDER MYSTERY', '11:30 AM — 12:45 PM', 0xff2e9f, .85],
   [.85, 'DEBATE', '2:30 PM — 3:30 PM', 0x00e5ff, .9], [.94, 'REGISTRATION HUB', 'CHOOSE YOUR PATH', 0xffd66b, .9]
 ];
