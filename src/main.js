@@ -101,7 +101,8 @@ app.insertAdjacentHTML('beforeend', `
       <span id="dash-count" class="dash-count"></span>
     </div>
     <div class="table-wrap"><table><thead><tr>
-      <th>#</th><th>Event</th><th>Option</th><th>Team</th><th>Participant 1</th><th>Dept</th><th>Yr</th>
+      <th>#</th><th>Event</th><th>Venue</th><th>Time</th><th>Option</th><th>Team</th>
+      <th>Participant 1</th><th>Dept</th><th>Yr</th>
       <th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th><th>Registered</th>
     </tr></thead><tbody id="registration-rows"></tbody></table></div>
     <div class="dash-pager">
@@ -341,12 +342,15 @@ async function loadDashboard() {
 
   dashboard.pages = result.pages; dashboard.total = result.total;
   const offset = (result.page - 1) * result.pageSize;
-  document.querySelector('#registration-rows').innerHTML = result.rows.map((row, index) => `<tr>
-    <td>${offset + index + 1}</td><td>${esc(row.event)}</td><td>${esc(row.choice)}</td><td>${esc(row.teamName)}</td>
+  document.querySelector('#registration-rows').innerHTML = result.rows.map((row, index) => {
+    const meta = eventMeta[row.event] || {};
+    return `<tr>
+    <td>${offset + index + 1}</td><td>${esc(row.event)}</td><td>${esc(meta.venue || '')}</td><td>${esc(meta.time || '')}</td><td>${esc(row.choice)}</td><td>${esc(row.teamName)}</td>
     <td>${esc(row.name)}</td><td>${esc(row.department)}</td><td>${esc(row.year)}</td>
     <td>${esc(row.partnerName)}</td><td>${esc(row.partnerDepartment)}</td><td>${esc(row.partnerYear)}</td>
     <td>${esc(row.phone)}</td><td>${esc(row.email)}</td>
-    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>`).join('')
+    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>`;
+  }).join('')
     || '<tr><td colspan="13" class="empty">No registrations found.</td></tr>';
 
   renderStats(result.dashboard);
