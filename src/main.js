@@ -323,6 +323,7 @@ adminTrigger.addEventListener('pointerup', event => { if (!dragStart) return; co
 document.querySelector('.close-admin').addEventListener('click', () => document.querySelector('#admin-gate').classList.remove('open'));
 document.querySelector('#pin-form').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch('/api/admin/pin', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))}); const result = await response.json(); document.querySelector('#admin-status').textContent = response.ok ? 'PIN accepted.' : result.error; if(response.ok){document.querySelector('#pin-form').hidden=true;document.querySelector('#login-form').hidden=false;document.querySelector('#admin-title').textContent='Administrator login';} });
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const eventMeta = Object.fromEntries(EVENTS.map(e => [e.registrationName, { venue: e.venue, time: e.time }]));
 const dashboard = { page: 1, pageSize: 50, query: '', pages: 1, total: 0, timer: null };
 
 function renderStats(summary) {
