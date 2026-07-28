@@ -176,11 +176,13 @@ describe('year 3 slot limit', () => {
     phone: `9611100${String(i).padStart(3, '0')}`, email: `y3solo${i}@example.com`,
   }).value;
 
-  test('allows exactly five Year 3 places for Bug Hunt', async () => {
-    const before = (await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'];
-    assert.equal(before, 5, 'should start with five places');
+  const bugHuntCap = YEAR_THREE_LIMIT['Bug Hunt'];
 
-    for (let i = 0; i < 5; i += 1) {
+  test(`allows exactly ${bugHuntCap} Year 3 places for Bug Hunt`, async () => {
+    const before = (await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'];
+    assert.equal(before, bugHuntCap, `should start with ${bugHuntCap} places`);
+
+    for (let i = 0; i < bugHuntCap; i += 1) {
       await createRegistration(y3solo(i), { yearThree: YEAR_THREE_LIMIT });
     }
     assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'], 0);
@@ -210,13 +212,17 @@ describe('year 3 slot limit', () => {
       phone: `9633300${String(i).padStart(3, '0')}`, email: `pair${i}@example.com`,
     }).value;
 
-    await createRegistration(team(1), { yearThree: YEAR_THREE_LIMIT });
-    await createRegistration(team(2), { yearThree: YEAR_THREE_LIMIT });
-    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, 1);
+    // Fill every place but one, two Year 3 students at a time.
+    const debateCap = YEAR_THREE_LIMIT.Debate;
+    const pairs = Math.floor((debateCap - 1) / 2);
+    for (let i = 1; i <= pairs; i += 1) {
+      await createRegistration(team(i), { yearThree: YEAR_THREE_LIMIT });
+    }
+    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, debateCap - pairs * 2);
 
-    // A third pair needs two places but only one remains.
+    // The next pair needs two places but fewer than two remain.
     await assert.rejects(
-      () => createRegistration(team(3), { yearThree: YEAR_THREE_LIMIT }),
+      () => createRegistration(team(pairs + 1), { yearThree: YEAR_THREE_LIMIT }),
       error => { assert.equal(error.name, 'CapacityError'); return true; });
 
     // A single Year 3 student still fits in the last place.
