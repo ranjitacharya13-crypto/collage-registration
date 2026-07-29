@@ -8,7 +8,7 @@ const workspace = mkdtempSync(join(tmpdir(), 'aura-test-'));
 process.env.DATA_DIR = workspace;
 process.env.DB_PATH = join(workspace, 'test.db');
 
-const { createRegistration, listRegistrations, allRegistrations, stats, yearThreeRemaining, DuplicateError, CapacityError, closeDatabase } =
+const { createRegistration, listRegistrations, allRegistrations, stats, yearThreeRemaining, DuplicateError, CapacityError, closeDatabase, deleteRegistration, deleteAllRegistrations } =
   await import('../src/server/db.js');
 const { validateRegistration, YEAR_THREE_LIMIT } = await import('../src/server/validate.js');
 const { buildXlsx, buildCsv } = await import('../src/server/export.js');
@@ -141,6 +141,25 @@ describe('storage', () => {
     }
     assert.equal((await stats([])).total, before + 200);
   });
+
+  test('deletes a single registration by id', async () => {
+    const row = await createRegistration(validateRegistration(solo({
+      email: 'delete-me@example.com', phone: '9111111111',
+    })).value);
+    const before = (await stats([])).total;
+    const removed = await deleteRegistration(row.id);
+    assert.equal(removed, true);
+    assert.equal((await stats([])).total, before - 1);
+    assert.equal(await deleteRegistration(row.id), false); // already gone
+  });
+
+  test('deletes every registration', async () => {
+    const before = (await stats([])).total;
+    assert.ok(before > 0);
+    const removedCount = await deleteAllRegistrations();
+    assert.equal(removedCount, before);
+    assert.equal((await stats([])).total, 0);
+  });
 });
 
 describe('exports', () => {
@@ -176,11 +195,11 @@ describe('year 3 slot limit', () => {
     phone: `9611100${String(i).padStart(3, '0')}`, email: `y3solo${i}@example.com`,
   }).value;
 
-  test('allows exactly five Year 3 places for Bug Hunt', async () => {
+  test('allows exactly fifteen Year 3 places for Bug Hunt', async () => {
     const before = (await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'];
-    assert.equal(before, 5, 'should start with five places');
+    assert.equal(before, 15, 'should start with fifteen places');
 
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 15; i += 1) {
       await createRegistration(y3solo(i), { yearThree: YEAR_THREE_LIMIT });
     }
     assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'], 0);
@@ -210,13 +229,14 @@ describe('year 3 slot limit', () => {
       phone: `9633300${String(i).padStart(3, '0')}`, email: `pair${i}@example.com`,
     }).value;
 
-    await createRegistration(team(1), { yearThree: YEAR_THREE_LIMIT });
-    await createRegistration(team(2), { yearThree: YEAR_THREE_LIMIT });
+    for (let i = 1; i <= 7; i += 1) {
+      await createRegistration(team(i), { yearThree: YEAR_THREE_LIMIT });
+    }
     assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, 1);
 
-    // A third pair needs two places but only one remains.
+    // An eighth pair needs two places but only one remains.
     await assert.rejects(
-      () => createRegistration(team(3), { yearThree: YEAR_THREE_LIMIT }),
+      () => createRegistration(team(8), { yearThree: YEAR_THREE_LIMIT }),
       error => { assert.equal(error.name, 'CapacityError'); return true; });
 
     // A single Year 3 student still fits in the last place.

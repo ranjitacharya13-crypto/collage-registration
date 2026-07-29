@@ -89,7 +89,7 @@ If it says `local SQLite file`, the two variables are not set.
   counting, so the last place cannot be given to two people.
 - **Eligibility.** A trigger blocks Year 3 from the non-technical events even if
   the request bypasses the form.
-- **Year 3 places.** Bug Hunt and Debate each allow only five Year 3 students.
+- **Year 3 places.** Bug Hunt and Debate each allow only fifteen Year 3 students.
   Counted per person, so a Debate team with two Year 3 members uses two places.
   Enforced inside the insert with an advisory lock, so the last place cannot be
   claimed twice.
@@ -179,6 +179,14 @@ then enter the PIN followed by the username and password. The dashboard shows
 live totals, a searchable and paginated table of every registration, and
 buttons to download the list as **Excel (.xlsx)** or CSV. It refreshes every
 five seconds while "Live" is ticked.
+
+Each row has a **REMOVE** button to delete that single registration (with a
+confirmation prompt), and a **DELETE ALL** button in the toolbar to wipe the
+entire table (with two confirmations, since it cannot be undone). Both call
+`DELETE /api/admin/registrations/:id` and `DELETE /api/admin/registrations`
+respectively, require an authenticated admin session, and update Supabase (or
+the local SQLite file) immediately — every connected dashboard refreshes to
+match.
 
 ## Exports
 

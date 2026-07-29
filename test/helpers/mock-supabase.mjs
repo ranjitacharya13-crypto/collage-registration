@@ -53,11 +53,22 @@ export function startMockSupabase({ failFirst = 0, latency = 0 } = {}) {
 
     if (url.pathname === '/rest/v1/registrations') {
       if (req.method === 'DELETE') {
-        const match = /email=eq\.(.+)$/.exec(url.search || '');
-        if (match) {
-          const target = decodeURIComponent(match[1]);
-          for (let i = rows.length - 1; i >= 0; i -= 1) if (rows[i].email === target) rows.splice(i, 1);
+        const emailMatch = /email=eq\.(.+)$/.exec(url.search || '');
+        const idEqMatch = /[?&]id=eq\.([^&]+)/.exec(url.search || '');
+        const idNeqMatch = /[?&]id=neq\.([^&]+)/.exec(url.search || '');
+        const removed = [];
+        if (emailMatch) {
+          const target = decodeURIComponent(emailMatch[1]);
+          for (let i = rows.length - 1; i >= 0; i -= 1) if (rows[i].email === target) { removed.push(rows[i]); rows.splice(i, 1); }
+        } else if (idEqMatch) {
+          const target = decodeURIComponent(idEqMatch[1]);
+          for (let i = rows.length - 1; i >= 0; i -= 1) if (rows[i].id === target) { removed.push(rows[i]); rows.splice(i, 1); }
+        } else if (idNeqMatch) {
+          // "delete everything" sentinel filter used by deleteAllRegistrations.
+          removed.push(...rows.splice(0, rows.length));
         }
+        const wantsRepresentation = /return=representation/.test(req.headers.prefer || '');
+        if (wantsRepresentation) return send(200, removed);
         res.writeHead(204); return res.end();
       }
       const limit = Number(url.searchParams.get('limit')) || 1000;

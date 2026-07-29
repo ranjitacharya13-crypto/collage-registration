@@ -14,6 +14,7 @@ process.env.SUPABASE_MAX_RETRIES = '3';
 const {
   createRegistration, stats, listRegistrations, allRegistrations,
   DuplicateError, CapacityError, StorageUnavailableError, verifyConnection, healthCheck,
+  deleteRegistration, deleteAllRegistrations,
 } = await import('../src/server/supabase-db.js');
 
 after(() => mock.server.close());
@@ -114,6 +115,23 @@ describe('supabase adapter', () => {
     const rows = await allRegistrations();
     assert.ok(rows.length >= 4, `expected >=4 rows, got ${rows.length}`);
     assert.ok(rows.every(row => row.id && row.event));
+  });
+
+  test('deletes a single registration by id', async () => {
+    const row = await createRegistration(solo({ email: 'delete-single@example.com', phone: '9300000001' }));
+    const before = (await stats([])).total;
+    const removed = await deleteRegistration(row.id);
+    assert.equal(removed, true);
+    assert.equal((await stats([])).total, before - 1);
+    assert.equal(await deleteRegistration(row.id), false); // already gone
+  });
+
+  test('deletes every registration', async () => {
+    const before = (await stats([])).total;
+    assert.ok(before > 0);
+    const removedCount = await deleteAllRegistrations();
+    assert.equal(removedCount, before);
+    assert.equal((await stats([])).total, 0);
   });
 });
 
