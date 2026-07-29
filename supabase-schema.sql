@@ -143,13 +143,6 @@ create trigger registration_year_three_guard
   before insert on public.registrations
   for each row execute function public.enforce_year_three_rule();
 
--- How many Year 3 places each limited event offers. Keep this in step with
--- YEAR_THREE_LIMIT in src/server/validate.js.
-create or replace function public.year_three_cap(event_name text)
-returns integer language sql immutable as $$
-  select case when event_name in ('Bug Hunt','Debate') then 15 else 0 end;
-$$;
-
 -- How many Year 3 places a single submission would consume.
 create or replace function public.new_year_three_seats(payload jsonb)
 returns integer language sql immutable as $$
@@ -173,19 +166,18 @@ begin
     end if;
   end if;
 
-  -- Year 3 places are limited for Bug Hunt and Debate (15 each). Counted per
-  -- student, so a team with two Year 3 members uses two places. The advisory
-  -- lock makes the count and the insert atomic under simultaneous submissions.
+  -- Year 3 places are limited for Bug Hunt and Debate. Counted per student, so
+  -- a team with two Year 3 members uses two places. The advisory lock makes the
+  -- count and the insert atomic under simultaneous submissions.
   if new_year_three_seats(payload) > 0
-     and year_three_cap(payload->>'event') > 0 then
+     and payload->>'event' in ('Bug Hunt','Debate') then
     perform pg_advisory_xact_lock(hashtext('aura_year_three_' || (payload->>'event')));
     if (select count(*) from public.registrations
           where event = payload->>'event' and year = '3')
      + (select count(*) from public.registrations
           where event = payload->>'event' and partner_year = '3')
-     + new_year_three_seats(payload) > year_three_cap(payload->>'event') then
-      raise exception 'All % Year 3 places for % are filled.',
-        year_three_cap(payload->>'event'), payload->>'event'
+     + new_year_three_seats(payload) > 5 then
+      raise exception 'All 5 Year 3 places for % are filled.', payload->>'event'
         using errcode = 'check_violation';
     end if;
   end if;
