@@ -62,6 +62,11 @@
 .dash-actions button{margin:0;padding:11px 15px;font:700 10px 'DM Mono';letter-spacing:.1em;cursor:pointer;border:0;background:var(--cyan);color:#06101d}
 .dash-actions .ghost{background:transparent;border:1px solid #ffffff33;color:#c8d6e8}
 .dash-actions .ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+.dash-actions .danger{border-color:#ff2e6d55;color:#ff8fa8}
+.dash-actions .danger:hover{border-color:#ff2e6d;color:#ff2e6d}
+.row-delete{padding:6px 10px;font:700 9px 'DM Mono';letter-spacing:.08em;border:1px solid #ff2e6d55;background:transparent;color:#ff8fa8;cursor:pointer;white-space:nowrap}
+.row-delete:hover{border-color:#ff2e6d;color:#ff2e6d}
+.row-delete:disabled{opacity:.5;cursor:not-allowed}
 .dash-actions .close-dashboard{position:static;background:transparent;border:1px solid #ffffff33;color:#c8d6e8;font-size:17px;line-height:1;padding:8px 13px}
 .dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:9px;margin:20px 0}
 .stat{padding:12px 14px;border:1px solid #ffffff1a;background:#ffffff07}

@@ -90,6 +90,7 @@ app.insertAdjacentHTML('beforeend', `
       <div class="dash-actions">
         <button id="export-xlsx">DOWNLOAD EXCEL ↗</button>
         <button id="export-csv" class="ghost">CSV</button>
+        <button id="delete-all" class="ghost danger">DELETE ALL</button>
         <button id="admin-logout" class="ghost">LOG OUT</button>
         <button class="close-dashboard" aria-label="Close">×</button>
       </div>
@@ -102,7 +103,7 @@ app.insertAdjacentHTML('beforeend', `
     </div>
     <div class="table-wrap"><table><thead><tr>
       <th>#</th><th>Event</th><th>Option</th><th>Team</th><th>Participant 1</th><th>Dept</th><th>Yr</th>
-      <th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th><th>Registered</th>
+      <th>Participant 2</th><th>Dept</th><th>Yr</th><th>Phone</th><th>Email</th><th>Registered</th><th>Action</th>
     </tr></thead><tbody id="registration-rows"></tbody></table></div>
     <div class="dash-pager">
       <button id="page-prev" class="ghost">← Prev</button>
@@ -341,13 +342,14 @@ async function loadDashboard() {
 
   dashboard.pages = result.pages; dashboard.total = result.total;
   const offset = (result.page - 1) * result.pageSize;
-  document.querySelector('#registration-rows').innerHTML = result.rows.map((row, index) => `<tr>
+  document.querySelector('#registration-rows').innerHTML = result.rows.map((row, index) => `<tr data-id="${esc(row.id)}">
     <td>${offset + index + 1}</td><td>${esc(row.event)}</td><td>${esc(row.choice)}</td><td>${esc(row.teamName)}</td>
     <td>${esc(row.name)}</td><td>${esc(row.department)}</td><td>${esc(row.year)}</td>
     <td>${esc(row.partnerName)}</td><td>${esc(row.partnerDepartment)}</td><td>${esc(row.partnerYear)}</td>
     <td>${esc(row.phone)}</td><td>${esc(row.email)}</td>
-    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td></tr>`).join('')
-    || '<tr><td colspan="13" class="empty">No registrations found.</td></tr>';
+    <td>${new Date(row.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+    <td><button class="row-delete ghost" data-id="${esc(row.id)}" type="button" aria-label="Remove this registration">REMOVE</button></td></tr>`).join('')
+    || '<tr><td colspan="14" class="empty">No registrations found.</td></tr>';
 
   renderStats(result.dashboard);
   document.querySelector('#dash-count').textContent = `${result.total} record${result.total === 1 ? '' : 's'}`;
@@ -383,6 +385,49 @@ document.querySelector('#page-prev').addEventListener('click', () => { if (dashb
 document.querySelector('#page-next').addEventListener('click', () => { if (dashboard.page < dashboard.pages) { dashboard.page += 1; loadDashboard(); } });
 document.querySelector('#export-xlsx').addEventListener('click', () => window.location.assign('/api/admin/export?format=xlsx'));
 document.querySelector('#export-csv').addEventListener('click', () => window.location.assign('/api/admin/export?format=csv'));
+
+// Removes a single registration row. Confirmed first: this cannot be undone.
+document.querySelector('#registration-rows').addEventListener('click', async event => {
+  const button = event.target.closest('.row-delete');
+  if (!button || button.disabled) return;
+  const row = button.closest('tr');
+  const name = row?.children?.[4]?.textContent?.trim() || 'this registration';
+  if (!confirm(`Remove ${name}? This cannot be undone.`)) return;
+  button.disabled = true;
+  button.textContent = '…';
+  try {
+    const response = await fetch(`/api/admin/registrations/${encodeURIComponent(button.dataset.id)}`, { method: 'DELETE' });
+    const result = await response.json().catch(() => ({}));
+    if (response.status === 401) { closeDashboard(); document.querySelector('#admin-gate').classList.add('open'); return; }
+    if (!response.ok) throw new Error(result.error || 'Could not remove that registration.');
+    await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = 'REMOVE';
+  }
+});
+
+// Wipes every registration. Double-confirmed: there is no undo for this.
+document.querySelector('#delete-all').addEventListener('click', async () => {
+  if (!confirm(`Delete ALL ${dashboard.total} registration(s)? This cannot be undone.`)) return;
+  if (!confirm('Really delete the entire table? Type OK to confirm one last time.')) return;
+  const button = document.querySelector('#delete-all');
+  button.disabled = true;
+  try {
+    const response = await fetch('/api/admin/registrations', { method: 'DELETE' });
+    const result = await response.json().catch(() => ({}));
+    if (response.status === 401) { closeDashboard(); document.querySelector('#admin-gate').classList.add('open'); return; }
+    if (!response.ok) throw new Error(result.error || 'Could not clear the registrations table.');
+    dashboard.page = 1;
+    await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.querySelector('#admin-logout').addEventListener('click', async () => {
   await fetch('/api/admin/logout', { method: 'POST' }).catch(() => {});
   closeDashboard();

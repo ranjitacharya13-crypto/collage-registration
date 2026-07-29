@@ -8,7 +8,7 @@ const workspace = mkdtempSync(join(tmpdir(), 'aura-test-'));
 process.env.DATA_DIR = workspace;
 process.env.DB_PATH = join(workspace, 'test.db');
 
-const { createRegistration, listRegistrations, allRegistrations, stats, yearThreeRemaining, DuplicateError, CapacityError, closeDatabase } =
+const { createRegistration, listRegistrations, allRegistrations, stats, yearThreeRemaining, DuplicateError, CapacityError, closeDatabase, deleteRegistration, deleteAllRegistrations } =
   await import('../src/server/db.js');
 const { validateRegistration, YEAR_THREE_LIMIT } = await import('../src/server/validate.js');
 const { buildXlsx, buildCsv } = await import('../src/server/export.js');
@@ -140,6 +140,25 @@ describe('storage', () => {
       })).value);
     }
     assert.equal((await stats([])).total, before + 200);
+  });
+
+  test('deletes a single registration by id', async () => {
+    const row = await createRegistration(validateRegistration(solo({
+      email: 'delete-me@example.com', phone: '9111111111',
+    })).value);
+    const before = (await stats([])).total;
+    const removed = await deleteRegistration(row.id);
+    assert.equal(removed, true);
+    assert.equal((await stats([])).total, before - 1);
+    assert.equal(await deleteRegistration(row.id), false); // already gone
+  });
+
+  test('deletes every registration', async () => {
+    const before = (await stats([])).total;
+    assert.ok(before > 0);
+    const removedCount = await deleteAllRegistrations();
+    assert.equal(removedCount, before);
+    assert.equal((await stats([])).total, 0);
   });
 });
 
