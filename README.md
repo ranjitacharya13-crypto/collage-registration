@@ -180,6 +180,14 @@ live totals, a searchable and paginated table of every registration, and
 buttons to download the list as **Excel (.xlsx)** or CSV. It refreshes every
 five seconds while "Live" is ticked.
 
+Each row has a **REMOVE** button to delete that single registration (with a
+confirmation prompt), and a **DELETE ALL** button in the toolbar to wipe the
+entire table (with two confirmations, since it cannot be undone). Both call
+`DELETE /api/admin/registrations/:id` and `DELETE /api/admin/registrations`
+respectively, require an authenticated admin session, and update Supabase (or
+the local SQLite file) immediately — every connected dashboard refreshes to
+match.
+
 ## Exports
 
 From the dashboard, or from the command line:

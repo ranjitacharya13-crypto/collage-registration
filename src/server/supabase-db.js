@@ -264,5 +264,41 @@ export async function healthCheck() {
   }
 }
 
+/** Deletes one registration by id. Returns true if a row was actually removed. */
+export async function deleteRegistration(id) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${URL_BASE}/rest/v1/${TABLE}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { ...headers, Prefer: 'return=representation' },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new StorageUnavailableError(redactSecrets(await response.text()));
+    const removed = response.status === 204 ? [] : await response.json();
+    return Array.isArray(removed) ? removed.length > 0 : true;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Wipes every registration. Returns the number of rows removed. */
+export async function deleteAllRegistrations() {
+  const before = await countRows(`/rest/v1/${TABLE}?select=id`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    // Postgrest requires a filter for bulk deletes; id=neq.<impossible uuid> matches every row.
+    const response = await fetch(
+      `${URL_BASE}/rest/v1/${TABLE}?id=neq.00000000-0000-0000-0000-000000000000`,
+      { method: 'DELETE', headers, signal: controller.signal },
+    );
+    if (!response.ok) throw new StorageUnavailableError(redactSecrets(await response.text()));
+  } finally {
+    clearTimeout(timer);
+  }
+  return before;
+}
+
 export function closeDatabase() { /* stateless HTTP client */ }
 export const legacyImported = 0;
