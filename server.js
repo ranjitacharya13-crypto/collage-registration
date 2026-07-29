@@ -12,6 +12,7 @@ import {
   yearThreeRemaining as readYearThreeRemaining,
   DuplicateError, CapacityError, closeDatabase, legacyImported,
   verifyConnection, healthCheck, STORAGE, configError, configWarning, urlInfo,
+  deleteRegistration, deleteAllRegistrations,
 } from './src/server/store.js';
 import { validateRegistration, ALLOWED_EVENTS, YEAR_THREE_LIMIT } from './src/server/validate.js';
 import { buildCsv, buildXlsx, exportFilename } from './src/server/export.js';
@@ -187,7 +188,7 @@ export async function handler(req, res) {
       'Access-Control-Allow-Origin': req.headers.origin || '*',
       'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
     });
     return res.end();
   }
@@ -322,6 +323,37 @@ export async function handler(req, res) {
         query: url.searchParams.get('q') || '',
       });
       return json(res, 200, { ...result, dashboard: await publicStats() });
+    }
+
+    // Delete every registration. Checked before the single-row route below so
+    // "/api/admin/registrations" (no id) always means "the whole table".
+    if (req.method === 'DELETE' && pathname === '/api/admin/registrations') {
+      let removed;
+      try {
+        removed = await deleteAllRegistrations();
+      } catch (error) {
+        console.error('[admin] delete-all failure:', error.message);
+        return json(res, 503, { error: 'Could not clear the database. Try again shortly.' });
+      }
+      const dashboard = await publicStats(true).catch(() => emptyStats());
+      broadcast('dashboard', dashboard);
+      return json(res, 200, { ok: true, removed, dashboard });
+    }
+
+    if (req.method === 'DELETE' && pathname.startsWith('/api/admin/registrations/')) {
+      const id = decodeURIComponent(pathname.slice('/api/admin/registrations/'.length));
+      if (!id) return json(res, 400, { error: 'Missing registration id.' });
+      let removed;
+      try {
+        removed = await deleteRegistration(id);
+      } catch (error) {
+        console.error('[admin] delete failure:', error.message);
+        return json(res, 503, { error: 'Could not delete that registration. Try again shortly.' });
+      }
+      if (!removed) return json(res, 404, { error: 'Registration not found.' });
+      const dashboard = await publicStats(true).catch(() => emptyStats());
+      broadcast('dashboard', dashboard);
+      return json(res, 200, { ok: true, dashboard });
     }
 
     if (req.method === 'GET' && (pathname === '/api/admin/analytics' || pathname === '/api/admin/report')) {

@@ -24,5 +24,7 @@ export const stats = async (knownEvents = []) => ({
 });
 export const verifyConnection = async () => unavailable();
 export const healthCheck = async () => ({ ok: false, latencyMs: 0, error: MESSAGE });
+export const deleteRegistration = async () => unavailable();
+export const deleteAllRegistrations = async () => unavailable();
 export function closeDatabase() {}
 export const legacyImported = 0;

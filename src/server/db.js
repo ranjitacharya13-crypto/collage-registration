@@ -83,6 +83,8 @@ const statements = {
   searchCount: db.prepare(`select count(*) as count from registrations
     where name like ?1 or email like ?1 or phone like ?1 or department like ?1
        or ifnull(team_name,'') like ?1 or ifnull(partner_name,'') like ?1 or event like ?1`),
+  deleteById: db.prepare('delete from registrations where id = ?'),
+  deleteAll: db.prepare('delete from registrations'),
 };
 
 /** One-time import of the old data/registrations.json file, if present. */
@@ -234,6 +236,19 @@ export async function listRegistrations({ page = 1, pageSize = 50, query = '' } 
   const total = term ? statements.searchCount.get(`%${term}%`).count : statements.total.get().count;
 
   return { rows, total, page: current, pageSize: size, pages: Math.max(1, Math.ceil(total / size)) };
+}
+
+/** Deletes one registration by id. Returns true if a row was actually removed. */
+export async function deleteRegistration(id) {
+  const result = statements.deleteById.run(id);
+  return result.changes > 0;
+}
+
+/** Wipes every registration. Returns the number of rows removed. */
+export async function deleteAllRegistrations() {
+  const before = statements.total.get().count;
+  statements.deleteAll.run();
+  return before;
 }
 
 export function closeDatabase() {
