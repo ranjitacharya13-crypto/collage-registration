@@ -18,7 +18,7 @@ const solo = (over = {}) => ({
   phone: '9876543210', email: 'asha@example.com', ...over,
 });
 const team = (over = {}) => ({
-  event: 'Crack the Clue', name: 'Bala R', department: 'ECE', year: '1',
+  event: 'Flush the Brain', name: 'Bala R', department: 'ECE', year: '1',
   phone: '9876500001', email: 'bala@example.com', teamName: 'Falcons',
   partnerName: 'Chitra S', partnerDepartment: 'ECE', partnerYear: '2', ...over,
 });
@@ -36,6 +36,11 @@ describe('validation', () => {
 
   test('rejects the legacy "Fuzzy Brain" name', () => {
     assert.ok(validateRegistration(solo({ event: 'Fuzzy Brain' })).error);
+  });
+
+  test('rejects events whose registration is closed', () => {
+    assert.match(validateRegistration(team({ event: 'Crack the Clue' })).error, /valid event/);
+    assert.match(validateRegistration(team({ event: 'Murder Mystery' })).error, /valid event/);
   });
 
   test('rejects bad email and phone', () => {
