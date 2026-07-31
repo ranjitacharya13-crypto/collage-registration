@@ -284,7 +284,7 @@ document.querySelectorAll('.register').forEach(button => button.addEventListener
     document.querySelector('#form-status').className = 'error';
     document.querySelector('#registration-form').reset();
     const submitBtn = document.querySelector('.submit-register');
-    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.style.display = 'none'; }
     // Hide form fields so only the closed message is visible.
     document.querySelector('#team-fields').hidden = true;
     document.querySelector('#partner-fields').hidden = true;
@@ -303,7 +303,7 @@ document.querySelectorAll('.register').forEach(button => button.addEventListener
   document.querySelector('#form-status').className = '';
   document.querySelector('#registration-form').reset();
   const submitBtn = document.querySelector('.submit-register');
-  if (submitBtn) submitBtn.disabled = false;
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.style.display = ''; }
   document.querySelector('#team-fields').hidden = false;
   document.querySelector('#partner-fields').hidden = false;
   document.querySelector('#choice-field').hidden = false;
