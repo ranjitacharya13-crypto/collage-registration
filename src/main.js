@@ -274,11 +274,42 @@ document.querySelectorAll('.register').forEach(button => button.addEventListener
   // data-event holds the exact name the API expects, so no string guessing.
   const eventName = button.closest('article')?.dataset.event || '';
   const details = eventByRegistrationName[eventName];
+
+  // Stop registration for Murder Mystery: show closed message when panel opens.
+  if (eventName === 'Murder Mystery') {
+    document.querySelector('#event').value = eventName;
+    document.querySelector('#form-event').textContent = 'Registration Closed';
+    document.querySelector('#form-when').textContent = details ? whenAndWhere(details) : 'Murder Mystery';
+    document.querySelector('#form-status').textContent = 'Registration is closed for Murder Mystery.';
+    document.querySelector('#form-status').className = 'error';
+    document.querySelector('#registration-form').reset();
+    const submitBtn = document.querySelector('.submit-register');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.style.display = 'none'; }
+    // Hide form fields so only the closed message is visible.
+    document.querySelector('#team-fields').hidden = true;
+    document.querySelector('#partner-fields').hidden = true;
+    document.querySelector('#choice-field').hidden = true;
+    document.querySelector('#contact-title').hidden = true;
+    document.querySelector('#name-label').hidden = true;
+    document.querySelector('#registration-form').querySelectorAll('label:not(#name-label)').forEach(l => { l.style.display = 'none'; });
+    registerPanel.classList.add('open');
+    return;
+  }
+
   document.querySelector('#event').value = eventName;
   document.querySelector('#form-event').textContent = details ? details.name : eventName;
   document.querySelector('#form-when').textContent = details ? whenAndWhere(details) : '';
   document.querySelector('#form-status').textContent = '';
+  document.querySelector('#form-status').className = '';
   document.querySelector('#registration-form').reset();
+  const submitBtn = document.querySelector('.submit-register');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.style.display = ''; }
+  document.querySelector('#team-fields').hidden = false;
+  document.querySelector('#partner-fields').hidden = false;
+  document.querySelector('#choice-field').hidden = false;
+  document.querySelector('#contact-title').hidden = false;
+  document.querySelector('#name-label').hidden = false;
+  document.querySelector('#registration-form').querySelectorAll('label').forEach(l => { l.style.display = ''; });
   configureForm(details);
   refreshYearThree(eventName);
   registerPanel.classList.add('open');
