@@ -227,6 +227,9 @@ document.querySelector('#creative-register').addEventListener('click', event => 
   setTimeout(() => { window.location.hash = 'registration-hub'; button.classList.remove('launching'); document.querySelector('#ultrasonic-field').classList.remove('launching'); }, 900);
 });
 const registerPanel = document.querySelector('#register');
+// Registration is closed for these events: clicking "Register now" opens the
+// panel with a "Registration Closed" notice instead of the form.
+const closedEvents = new Set(['Murder Mystery', 'Crack the Clue']);
 // Year 3 is not eligible for the non-technical events (mirrors the server rule).
 const nonTechnicalEvents = EVENTS.filter(e => e.category === 'non-technical').map(e => e.registrationName);
 function refreshYearThree(eventName) {
@@ -275,12 +278,12 @@ document.querySelectorAll('.register').forEach(button => button.addEventListener
   const eventName = button.closest('article')?.dataset.event || '';
   const details = eventByRegistrationName[eventName];
 
-  // Stop registration for Murder Mystery: show closed message when panel opens.
-  if (eventName === 'Murder Mystery') {
+  // Stop registration for closed events: show closed message when panel opens.
+  if (closedEvents.has(eventName)) {
     document.querySelector('#event').value = eventName;
     document.querySelector('#form-event').textContent = 'Registration Closed';
-    document.querySelector('#form-when').textContent = details ? whenAndWhere(details) : 'Murder Mystery';
-    document.querySelector('#form-status').textContent = 'Registration is closed for Murder Mystery.';
+    document.querySelector('#form-when').textContent = details ? whenAndWhere(details) : eventName;
+    document.querySelector('#form-status').textContent = `Registration is closed for ${eventName}.`;
     document.querySelector('#form-status').className = 'error';
     document.querySelector('#registration-form').reset();
     const submitBtn = document.querySelector('.submit-register');
