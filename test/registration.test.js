@@ -18,7 +18,7 @@ const solo = (over = {}) => ({
   phone: '9876543210', email: 'asha@example.com', ...over,
 });
 const team = (over = {}) => ({
-  event: 'Treasure Hunt', name: 'Bala R', department: 'ECE', year: '1',
+  event: 'Crack the Clue', name: 'Bala R', department: 'ECE', year: '1',
   phone: '9876500001', email: 'bala@example.com', teamName: 'Falcons',
   partnerName: 'Chitra S', partnerDepartment: 'ECE', partnerYear: '2', ...over,
 });

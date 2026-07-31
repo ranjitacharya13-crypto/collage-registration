@@ -30,7 +30,7 @@ export function startMockSupabase({ failFirst = 0, latency = 0 } = {}) {
       if (cap > 0 && rows.length >= cap) {
         return send(400, { message: `Registration is closed. All ${cap} places are filled.` });
       }
-      const blocked = ['Flush the Brain', 'Treasure Hunt', 'Murder Mystery'];
+      const blocked = ['Flush the Brain', 'Crack the Clue', 'Murder Mystery'];
       if (blocked.includes(p.event) && (p.year === '3' || p.partnerYear === '3')) {
         return send(400, { message: 'Year 3 students are not eligible for this event.' });
       }

@@ -18,7 +18,7 @@ export const DAYS = [
     items: [
       { name: 'Murder Mystery', time: '11:30 AM — 12:30 PM', venue: 'Vyasa Hall', kind: 'event',
         category: 'non-technical', team: '15 teams of 2', teamSize: 2, rules: 'Projector scenario clues · Find the murderer' },
-      { name: 'Treasure Hunt', time: '01:45 PM — 02:45 PM', venue: 'Library, Main Lab', kind: 'event',
+      { name: 'Crack the Clue', time: '01:45 PM — 02:45 PM', venue: 'Library, Main Lab', kind: 'event',
         category: 'non-technical', team: 'Team of 2', teamSize: 2, rules: 'R1: find 5 papers · R2: identify article numbers / names' },
     ],
   },
@@ -43,7 +43,7 @@ export const DAYS = [
 // The value POSTed to /api/registrations must match the server's allow-list.
 export const REGISTRATION_NAME = {
   'Flush the Brain': 'Flush the Brain',
-  'Treasure Hunt': 'Treasure Hunt',
+  'Crack the Clue': 'Crack the Clue',
   'Bug Hunt': 'Bug Hunt',
   'Murder Mystery': 'Murder Mystery',
   'Debate': 'Debate',

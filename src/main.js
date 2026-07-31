@@ -147,7 +147,7 @@ const milestones = [
   [.085, 'DEPARTMENT OF CSE', 'PRESENTS', 0xffd66b, .62],
   [.125, 'AURA 2026', SYMPOSIUM.dateRange, 0x00e5ff, 1.35],
   [.215, 'DAY 1', `${DAYS[0].date}\n${DAYS[0].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.33, 'FLUSH THE BRAIN', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
-  [.45, 'TREASURE HUNT', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
+  [.45, 'CRACK THE CLUE', '11:30 AM — 12:30 PM', 0xff2e9f, .85],
   [.57, 'BUG HUNT', '2:30 PM — 3:15 PM', 0x00e5ff, .85],
   [.70, 'DAY 2', `${DAYS[1].date}\n${DAYS[1].weekday.toUpperCase()}`, 0x00e5ff, 1.5], [.78, 'MURDER MYSTERY', '11:30 AM — 12:45 PM', 0xff2e9f, .85],
   [.85, 'DEBATE', '2:30 PM — 3:30 PM', 0x00e5ff, .9], [.94, 'REGISTRATION HUB', 'CHOOSE YOUR PATH', 0xffd66b, .9]
@@ -169,7 +169,7 @@ const HUD_CARDS = {
   'AURA 2026':         { title: 'AURA 2026',         detail: SYMPOSIUM.dateRange.toUpperCase(), tone: 'cyan'  },
 };
 milestones.forEach(([t, a, b, c, s], i) => {
-  const eventNames = ['FLUSH THE BRAIN', 'TREASURE HUNT', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE'];
+  const eventNames = ['FLUSH THE BRAIN', 'CRACK THE CLUE', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE'];
   const isEvent = eventNames.includes(a);
   const isDayMarker = a === 'DAY 1' || a === 'DAY 2';
   const isTitle = TITLE_CARDS.includes(a);
@@ -205,7 +205,7 @@ function chapterAt(progress) {
   }
   return current;
 }
-const mainEvents = ['FLUSH THE BRAIN', 'TREASURE HUNT', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE'];
+const mainEvents = ['FLUSH THE BRAIN', 'CRACK THE CLUE', 'BUG HUNT', 'MURDER MYSTERY', 'DEBATE'];
 // Built from schedule.js so the HUD always matches the printed programme.
 const eventInfo = Object.fromEntries(EVENTS.map(event => [
   event.name.toUpperCase().replace('DEBATE: ANDROID VS IOS', 'DEBATE'),

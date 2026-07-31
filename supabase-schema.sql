@@ -98,8 +98,16 @@ end $$;
 -- 4. Event name check. Drop the old constraint first: the original version
 --    allowed different names, which would reject valid rows now.
 alter table public.registrations drop constraint if exists registrations_event_check;
+
+-- Keep prior registrations visible under the renamed event in the admin panel.
+-- This project had no "Crack the Clue" registrations before this rename, so
+-- the existing event/email and event/phone unique indexes remain valid.
+update public.registrations
+   set event = 'Crack the Clue'
+ where event = 'Treasure Hunt';
+
 alter table public.registrations add  constraint registrations_event_check
-  check (event in ('Flush the Brain','Treasure Hunt','Bug Hunt','Murder Mystery','Debate'))
+  check (event in ('Flush the Brain','Crack the Clue','Bug Hunt','Murder Mystery','Debate'))
   not valid;   -- not valid = existing rows are left alone, new rows are checked
 
 alter table public.registrations drop constraint if exists registrations_year_check;
@@ -126,7 +134,7 @@ drop policy if exists "anon can read registrations"     on public.registrations;
 create or replace function public.enforce_year_three_rule()
 returns trigger language plpgsql as $$
 begin
-  if new.event in ('Flush the Brain','Treasure Hunt','Murder Mystery') then
+  if new.event in ('Flush the Brain','Crack the Clue','Murder Mystery') then
     if new.year = '3' or new.partner_year = '3' then
       raise exception 'Year 3 students are not eligible for this event.'
         using errcode = 'check_violation';

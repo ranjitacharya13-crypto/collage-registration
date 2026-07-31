@@ -24,7 +24,7 @@ const solo = (over = {}) => ({
   phone: '9876543210', email: 'asha@example.com', ...over,
 });
 const team = (over = {}) => ({
-  event: 'Treasure Hunt', name: 'Bala R', department: 'ECE', year: '1',
+  event: 'Crack the Clue', name: 'Bala R', department: 'ECE', year: '1',
   phone: '9876500001', email: 'bala@example.com', teamName: 'Falcons',
   partnerName: 'Chitra S', partnerDepartment: 'ECE', partnerYear: '2', ...over,
 });
@@ -91,7 +91,7 @@ describe('supabase adapter', () => {
   });
 
   test('reports statistics', async () => {
-    const summary = await stats(['Bug Hunt', 'Treasure Hunt', 'Debate', 'Murder Mystery', 'Flush the Brain']);
+    const summary = await stats(['Bug Hunt', 'Crack the Clue', 'Debate', 'Murder Mystery', 'Flush the Brain']);
     assert.ok(summary.total >= 4, `expected >=4 rows, got ${summary.total}`);
     assert.equal(summary.byEvent['Flush the Brain'], 0);
     assert.ok(summary.teams >= 1);
