@@ -1,9 +1,10 @@
 // Server-side validation. The browser form is a convenience; this is the
 // authority, because anyone can POST to the API directly.
 
-// Registration for 'Crack the Clue' and 'Murder Mystery' is closed, so they
-// are not in the allow-list and the API rejects new entries for them.
-export const ALLOWED_EVENTS = ['Flush the Brain', 'Bug Hunt', 'Debate'];
+// Registration is closed for 'Crack the Clue', 'Murder Mystery',
+// 'Flush the Brain' and 'Debate', so they are not in the allow-list and the
+// API rejects new entries for them. 'Bug Hunt' is the only open event.
+export const ALLOWED_EVENTS = ['Bug Hunt'];
 export const TEAM_EVENTS = new Set(['Flush the Brain', 'Crack the Clue', 'Debate']);
 export const EVENT_CHOICES = { Debate: ['Android', 'iOS'] };
 // Year 3 students are not eligible for these events.
