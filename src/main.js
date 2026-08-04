@@ -76,7 +76,7 @@ app.innerHTML = `
   <section id="registration-hub" class="choice" aria-hidden="true"><p class="eyebrow">Select your frequency</p><h2>Registration<br>Hub</h2><div class="route-grid">
     <a href="#technical" class="route cyan"><small>01 / CYBER CIRCUITRY</small><strong>TECHNICAL</strong><span>Bug Hunt · Debate</span></a>
     <a href="#creative" class="route pink"><small>02 / CREATIVE CURRENT</small><strong>NON-TECHNICAL</strong><span>Three team events</span></a>
-    <a href="#schedule" class="route amber"><small>03 / FULL PROGRAMME</small><strong>SCHEDULE</strong><span>Day 1 · 31.07 — Day 2 · 05.08</span></a>
+    <a href="#schedule" class="route amber"><small>03 / FULL PROGRAMME</small><strong>SCHEDULE</strong><span>Day 1 · 31.07 — Day 2 · 06.08</span></a>
   </div></section>
   <section id="technical" class="panel technical"><a href="#" class="back">← Back to journey</a><p class="eyebrow">Route 01 / Cyber circuitry</p><h2>Technical<br>Registration</h2><div class="cards">${eventCards('technical')}</div></section>
   <section id="creative" class="panel creative"><a href="#" class="back">← Back to journey</a><p class="eyebrow">Route 02 / Abstract art</p><h2>Non-Technical<br>Registration</h2><div class="cards">${eventCards('non-technical')}</div></section>`;
