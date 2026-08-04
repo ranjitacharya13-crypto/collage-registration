@@ -25,9 +25,9 @@ export const DAYS = [
   {
     id: 'day-2',
     label: 'Day 2',
-    date: '05.08.2026',
+    date: '06.08.2026',
     weekday: 'Wednesday',
-    dateLong: '05 August 2026',
+    dateLong: '06 August 2026',
     items: [
       { name: 'Bug Hunt', time: '11:30 AM — 12:30 PM', venue: 'Main Lab', kind: 'event',
         category: 'technical', team: 'Single participant', teamSize: 1, rules: 'Theory (C / Python) + practical debugging' },
