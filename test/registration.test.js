@@ -39,8 +39,10 @@ describe('validation', () => {
   });
 
   test('rejects events whose registration is closed', () => {
-    assert.match(validateRegistration(team({ event: 'Crack the Clue' })).error, /valid event/);
-    assert.match(validateRegistration(team({ event: 'Murder Mystery' })).error, /valid event/);
+    // Crack the Clue, Murder Mystery, Flush the Brain and Debate are all closed.
+    for (const event of ['Crack the Clue', 'Murder Mystery', 'Flush the Brain', 'Debate']) {
+      assert.match(validateRegistration(team({ event })).error, /valid event/);
+    }
   });
 
   test('rejects bad email and phone', () => {
@@ -48,27 +50,8 @@ describe('validation', () => {
     assert.match(validateRegistration(solo({ phone: '123' })).error, /phone/);
   });
 
-  test('requires both participants for team events', () => {
-    assert.match(validateRegistration(team({ partnerName: '' })).error, /participant 2/i);
-    assert.match(validateRegistration(team({ teamName: '' })).error, /team name/i);
-    assert.match(validateRegistration(team({ partnerYear: '' })).error, /participant 2/i);
-  });
-
-  test('rejects the same person entered twice', () => {
-    assert.match(validateRegistration(team({ partnerName: 'bala r' })).error, /different people/);
-  });
-
-  test('enforces the debate dropdown', () => {
-    const base = team({ event: 'Debate' });
-    assert.match(validateRegistration(base).error, /Android, iOS/);
-    assert.match(validateRegistration({ ...base, choice: 'Windows' }).error, /Android, iOS/);
-    assert.equal(validateRegistration({ ...base, choice: 'iOS' }).error, undefined);
-  });
-
-  test('blocks year 3 from non-technical events', () => {
-    assert.match(validateRegistration(team({ year: '3' })).error, /Year 3/);
-    assert.match(validateRegistration(team({ partnerYear: '3' })).error, /Year 3/);
-    // Bug Hunt allows year 3.
+  test('allows year 3 students in Bug Hunt', () => {
+    // Bug Hunt is the only open event and is open to all years.
     assert.equal(validateRegistration(solo({ year: '3' })).error, undefined);
   });
 
@@ -105,19 +88,6 @@ describe('storage', () => {
       DuplicateError);
   });
 
-  test('allows the same person in a different event', async () => {
-    const row = await createRegistration(validateRegistration(team({ email: 'asha@example.com', phone: '9876543210' })).value);
-    assert.ok(row.id);
-  });
-
-  test('stores team and choice fields', async () => {
-    const row = await createRegistration(validateRegistration(team({
-      event: 'Debate', choice: 'Android', email: 'deb@example.com', phone: '9800000001',
-    })).value);
-    assert.equal(row.choice, 'Android');
-    assert.equal(row.partnerName, 'Chitra S');
-  });
-
   test('enforces total capacity atomically', async () => {
     await assert.rejects(
       () => createRegistration(
@@ -127,11 +97,17 @@ describe('storage', () => {
   });
 
   test('search and pagination work', async () => {
+    for (let i = 0; i < 4; i += 1) {
+      await createRegistration(validateRegistration(solo({
+        name: `Searchable ${i}`, email: `search${i}@example.com`,
+        phone: `9700000${String(i).padStart(4, '0')}`,
+      })).value);
+    }
     const all = await listRegistrations({ pageSize: 100 });
-    assert.ok(all.total >= 3, `expected at least 3 rows, got ${all.total}`);
-    const found = await listRegistrations({ query: 'Falcons' });
-    assert.ok(found.total >= 1);
-    assert.ok(found.rows.every(row => row.teamName === 'Falcons'));
+    assert.ok(all.total >= 4, `expected at least 4 rows, got ${all.total}`);
+    const found = await listRegistrations({ query: 'Searchable' });
+    assert.ok(found.total >= 4);
+    assert.ok(found.rows.every(row => row.name.includes('Searchable')));
     const page = await listRegistrations({ page: 1, pageSize: 2 });
     assert.equal(page.rows.length, 2);
     assert.ok(page.pages >= 2);
@@ -224,34 +200,5 @@ describe('year 3 slot limit', () => {
       phone: '9622200001', email: 'y2ok@example.com',
     }).value, { yearThree: YEAR_THREE_LIMIT });
     assert.ok(row.id);
-  });
-
-  test('a team with two Year 3 members uses two places', async () => {
-    const team = (i) => validateRegistration({
-      event: 'Debate', choice: 'Android', teamName: `Pair ${i}`,
-      name: `Lead ${i}`, department: 'IT', year: '3',
-      partnerName: `Mate ${i}`, partnerDepartment: 'IT', partnerYear: '3',
-      phone: `9633300${String(i).padStart(3, '0')}`, email: `pair${i}@example.com`,
-    }).value;
-
-    for (let i = 1; i <= 7; i += 1) {
-      await createRegistration(team(i), { yearThree: YEAR_THREE_LIMIT });
-    }
-    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, 1);
-
-    // An eighth pair needs two places but only one remains.
-    await assert.rejects(
-      () => createRegistration(team(8), { yearThree: YEAR_THREE_LIMIT }),
-      error => { assert.equal(error.name, 'CapacityError'); return true; });
-
-    // A single Year 3 student still fits in the last place.
-    const single = await createRegistration(validateRegistration({
-      event: 'Debate', choice: 'iOS', teamName: 'Mixed',
-      name: 'Y3 Lead', department: 'IT', year: '3',
-      partnerName: 'Y2 Mate', partnerDepartment: 'IT', partnerYear: '2',
-      phone: '9644400001', email: 'mixed@example.com',
-    }).value, { yearThree: YEAR_THREE_LIMIT });
-    assert.ok(single.id);
-    assert.equal((await yearThreeRemaining(YEAR_THREE_LIMIT)).Debate, 0);
   });
 });
