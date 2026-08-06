@@ -229,8 +229,7 @@ document.querySelector('#creative-register').addEventListener('click', event => 
 const registerPanel = document.querySelector('#register');
 // Registration is closed for these events: clicking "Register now" opens the
 // panel with a "Registration Closed" notice instead of the form.
-// Triggering rebuild for production deployment.
-const closedEvents = new Set(['Murder Mystery', 'Crack the Clue', 'Flush the Brain', 'Debate']);
+const closedEvents = new Set(['Murder Mystery', 'Crack the Clue', 'Flush the Brain', 'Debate', 'Bug Hunt']);
 // Year 3 is not eligible for the non-technical events (mirrors the server rule).
 const nonTechnicalEvents = EVENTS.filter(e => e.category === 'non-technical').map(e => e.registrationName);
 function refreshYearThree(eventName) {

@@ -1,17 +1,17 @@
 // Server-side validation. The browser form is a convenience; this is the
 // authority, because anyone can POST to the API directly.
 
-// Registration is closed for 'Crack the Clue', 'Murder Mystery',
-// 'Flush the Brain' and 'Debate', so they are not in the allow-list and the
-// API rejects new entries for them. 'Bug Hunt' is the only open event.
-export const ALLOWED_EVENTS = ['Bug Hunt'];
+// Registration is closed for all events ('Crack the Clue', 'Murder Mystery',
+// 'Flush the Brain', 'Debate', and 'Bug Hunt'), so they are not in the allow-list
+// and the API rejects new entries for them.
+export const ALLOWED_EVENTS = [];
 export const TEAM_EVENTS = new Set(['Flush the Brain', 'Crack the Clue', 'Debate']);
 export const EVENT_CHOICES = { Debate: ['Android', 'iOS'] };
 // Year 3 students are not eligible for these events.
 export const YEAR_THREE_BLOCKED = new Set(['Flush the Brain', 'Crack the Clue']);
 // Year 3 students may take part in these events, but only 15 places each.
 // Counted per student, so a Debate team with two Year 3 members uses two.
-export const YEAR_THREE_LIMIT = { 'Bug Hunt': 100, Debate: 100 };
+export const YEAR_THREE_LIMIT = { 'Bug Hunt': 15, Debate: 15 };
 /** How many Year 3 places a single registration would consume. */
 export const yearThreeSeats = value =>
   (value.year === '3' ? 1 : 0) + (value.partnerYear === '3' ? 1 : 0);
