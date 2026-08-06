@@ -184,8 +184,8 @@ begin
           where event = payload->>'event' and year = '3')
      + (select count(*) from public.registrations
           where event = payload->>'event' and partner_year = '3')
-     + new_year_three_seats(payload) > 15 then
-      raise exception 'All 15 Year 3 places for % are filled.', payload->>'event'
+     + new_year_three_seats(payload) > 100 then
+      raise exception 'All 100 Year 3 places for % are filled.', payload->>'event'
         using errcode = 'check_violation';
     end if;
   end if;

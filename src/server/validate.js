@@ -11,7 +11,7 @@ export const EVENT_CHOICES = { Debate: ['Android', 'iOS'] };
 export const YEAR_THREE_BLOCKED = new Set(['Flush the Brain', 'Crack the Clue']);
 // Year 3 students may take part in these events, but only 15 places each.
 // Counted per student, so a Debate team with two Year 3 members uses two.
-export const YEAR_THREE_LIMIT = { 'Bug Hunt': 15, Debate: 15 };
+export const YEAR_THREE_LIMIT = { 'Bug Hunt': 100, Debate: 100 };
 /** How many Year 3 places a single registration would consume. */
 export const yearThreeSeats = value =>
   (value.year === '3' ? 1 : 0) + (value.partnerYear === '3' ? 1 : 0);
