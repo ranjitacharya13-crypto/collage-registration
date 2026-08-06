@@ -26,10 +26,6 @@ const team = (over = {}) => ({
 after(() => { closeDatabase(); rmSync(workspace, { recursive: true, force: true }); });
 
 describe('validation', () => {
-  test('accepts a valid solo registration', () => {
-    assert.equal(validateRegistration(solo()).error, undefined);
-  });
-
   test('rejects unknown events', () => {
     assert.match(validateRegistration(solo({ event: 'Hackathon' })).error, /valid event/);
   });
@@ -39,69 +35,46 @@ describe('validation', () => {
   });
 
   test('rejects events whose registration is closed', () => {
-    // Crack the Clue, Murder Mystery, Flush the Brain and Debate are all closed.
-    for (const event of ['Crack the Clue', 'Murder Mystery', 'Flush the Brain', 'Debate']) {
-      assert.match(validateRegistration(team({ event })).error, /valid event/);
+    // Crack the Clue, Murder Mystery, Flush the Brain, Debate, and Bug Hunt are all closed.
+    for (const event of ['Crack the Clue', 'Murder Mystery', 'Flush the Brain', 'Debate', 'Bug Hunt']) {
+      assert.match(validateRegistration(solo({ event })).error, /valid event/);
     }
-  });
-
-  test('rejects bad email and phone', () => {
-    assert.match(validateRegistration(solo({ email: 'nope' })).error, /email/);
-    assert.match(validateRegistration(solo({ phone: '123' })).error, /phone/);
-  });
-
-  test('allows year 3 students in Bug Hunt', () => {
-    // Bug Hunt is the only open event and is open to all years.
-    assert.equal(validateRegistration(solo({ year: '3' })).error, undefined);
-  });
-
-  test('trims and normalises input', () => {
-    const { value } = validateRegistration(solo({ name: '  Asha   Kumar ', email: '  ASHA@Example.COM ' }));
-    assert.equal(value.name, 'Asha Kumar');
-    assert.equal(value.email, 'asha@example.com');
-  });
-
-  test('drops a stray choice on events without one', () => {
-    const { value } = validateRegistration(solo({ choice: 'Android' }));
-    assert.equal(value.choice, undefined);
   });
 });
 
 describe('storage', () => {
   test('persists a registration', async () => {
-    const row = await createRegistration(validateRegistration(solo()).value);
+    const row = await createRegistration(solo());
     assert.ok(row.id);
     assert.equal((await stats(['Bug Hunt'])).total, 1);
   });
 
   test('rejects a duplicate email for the same event', async () => {
-    await assert.rejects(() => createRegistration(validateRegistration(solo({ phone: '9999999999' })).value), DuplicateError);
+    await assert.rejects(() => createRegistration(solo({ phone: '9999999999' })), DuplicateError);
   });
 
   test('rejects a duplicate phone for the same event', async () => {
-    await assert.rejects(() => createRegistration(validateRegistration(solo({ email: 'other@example.com' })).value), DuplicateError);
+    await assert.rejects(() => createRegistration(solo({ email: 'other@example.com' })), DuplicateError);
   });
 
   test('ignores phone formatting when detecting duplicates', async () => {
     await assert.rejects(
-      () => createRegistration(validateRegistration(solo({ email: 'x@example.com', phone: '+919876543210' })).value),
+      () => createRegistration(solo({ email: 'x@example.com', phone: '+919876543210' })),
       DuplicateError);
   });
 
   test('enforces total capacity atomically', async () => {
     await assert.rejects(
-      () => createRegistration(
-        validateRegistration(solo({ email: 'cap@example.com', phone: '9700000001' })).value,
-        { total: 1 }),
+      () => createRegistration(solo({ email: 'cap@example.com', phone: '9700000001' }), { total: 1 }),
       CapacityError);
   });
 
   test('search and pagination work', async () => {
     for (let i = 0; i < 4; i += 1) {
-      await createRegistration(validateRegistration(solo({
+      await createRegistration(solo({
         name: `Searchable ${i}`, email: `search${i}@example.com`,
         phone: `9700000${String(i).padStart(4, '0')}`,
-      })).value);
+      }));
     }
     const all = await listRegistrations({ pageSize: 100 });
     assert.ok(all.total >= 4, `expected at least 4 rows, got ${all.total}`);
@@ -116,17 +89,17 @@ describe('storage', () => {
   test('handles a burst of concurrent-style inserts without loss', async () => {
     const before = (await stats([])).total;
     for (let i = 0; i < 200; i += 1) {
-      await createRegistration(validateRegistration(solo({
+      await createRegistration(solo({
         name: `Bulk ${i}`, email: `bulk${i}@example.com`, phone: `98000${String(i).padStart(5, '0')}`,
-      })).value);
+      }));
     }
     assert.equal((await stats([])).total, before + 200);
   });
 
   test('deletes a single registration by id', async () => {
-    const row = await createRegistration(validateRegistration(solo({
+    const row = await createRegistration(solo({
       email: 'delete-me@example.com', phone: '9111111111',
-    })).value);
+    }));
     const before = (await stats([])).total;
     const removed = await deleteRegistration(row.id);
     assert.equal(removed, true);
@@ -171,10 +144,10 @@ describe('exports', () => {
 });
 
 describe('year 3 slot limit', () => {
-  const y3solo = (i) => validateRegistration({
+  const y3solo = (i) => ({
     event: 'Bug Hunt', name: `Y3 Solo ${i}`, department: 'CSE', year: '3',
     phone: `9611100${String(i).padStart(3, '0')}`, email: `y3solo${i}@example.com`,
-  }).value;
+  });
 
   test('allows exactly fifteen Year 3 places for Bug Hunt', async () => {
     const before = (await yearThreeRemaining(YEAR_THREE_LIMIT))['Bug Hunt'];
@@ -195,10 +168,10 @@ describe('year 3 slot limit', () => {
   });
 
   test('year 1 and 2 are unaffected once Year 3 is full', async () => {
-    const row = await createRegistration(validateRegistration({
+    const row = await createRegistration({
       event: 'Bug Hunt', name: 'Second Year', department: 'CSE', year: '2',
       phone: '9622200001', email: 'y2ok@example.com',
-    }).value, { yearThree: YEAR_THREE_LIMIT });
+    }, { yearThree: YEAR_THREE_LIMIT });
     assert.ok(row.id);
   });
 });
